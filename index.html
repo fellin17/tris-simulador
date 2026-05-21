@@ -317,85 +317,97 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .sopt .st{font-family:var(--fh);font-size:12px;color:var(--c)}
 .bcurr{font-size:9px;background:var(--c);color:var(--bg);padding:2px 6px;border-radius:20px;font-weight:700}
 
-/* ===== VERSIÓN ACCESIBLE — LETRA GRANDE ===== */
-body { font-size: 22px !important; }
-.hlogo { font-size: 26px !important; }
-.hplayer { font-size: 16px !important; }
-.hplayer small { font-size: 13px !important; }
-.hbal .lbl { font-size: 13px !important; }
-.hbal .val { font-size: 24px !important; }
-.hcart { font-size: 18px !important; padding: 8px 14px !important; }
-.badge { width: 22px !important; height: 22px !important; font-size: 14px !important; }
-.nb { font-size: 13px !important; padding: 9px 4px !important; }
-.nb .ni { font-size: 28px !important; }
-.stitle { font-size: 15px !important; letter-spacing: 1px !important; }
-.scard .sl { font-size: 13px !important; }
-.scard .sv { font-size: 26px !important; }
-.sbanner .sn { font-size: 22px !important; }
-.sbanner .st { font-size: 16px !important; }
-.sbanner .cd { font-size: 26px !important; }
-.sbanner .nl { font-size: 14px !important; }
-.qbtn .qi { font-size: 34px !important; }
-.qbtn .qn { font-size: 14px !important; }
+
+/* ===== FIX LAYOUT ACCESIBLE ===== */
+html, body { overflow-x: hidden !important; }
+#main { overflow-x: hidden !important; }
+
+/* Quick buttons: 2 columns instead of 3 */
+.qgrid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+.qbtn { padding: 20px 12px !important; gap: 8px !important; }
+.qbtn .qi { font-size: 36px !important; }
+.qbtn .qn { font-size: 15px !important; }
 .qbtn .qs { font-size: 14px !important; }
-.qbtn { padding: 18px 10px !important; }
-.mbtn .mi { font-size: 30px !important; }
+
+/* Modalidades: 2 columns */
+.mgrid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+.mbtn { padding: 18px 10px !important; }
+.mbtn .mi { font-size: 32px !important; }
 .mbtn .mn { font-size: 13px !important; }
 .mbtn .mp { font-size: 13px !important; }
 .mbtn .mc { font-size: 14px !important; }
-.mbtn { padding: 18px 10px !important; }
-.dinp { width: 58px !important; height: 72px !important; font-size: 34px !important; border-radius: 14px !important; }
-.npk { font-size: 26px !important; padding: 18px 8px !important; border-radius: 14px !important; }
-.npk.del, .npk.clr { font-size: 16px !important; }
-.adisplay .sign { font-size: 32px !important; }
-.adisplay .num { font-size: 62px !important; }
-.apb { font-size: 16px !important; padding: 12px !important; }
-.playsrow .lbl { font-size: 18px !important; }
-.pcbtn { width: 44px !important; height: 44px !important; font-size: 26px !important; }
-.pval { font-size: 28px !important; }
-.srow .sl { font-size: 17px !important; }
+
+/* Stats grid: 2 columns */
+.sgrid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+.scard .sl { font-size: 14px !important; }
+.scard .sv { font-size: 30px !important; }
+
+/* Amount presets: 4 columns but smaller */
+.apreset { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; }
+.apb { font-size: 16px !important; padding: 12px 6px !important; }
+
+/* Numpad: keep 5 cols but fix overflow */
+.numpad { gap: 8px !important; padding: 0 !important; }
+.npk { font-size: 28px !important; padding: 18px 4px !important; }
+
+/* Digit inputs: wrap and center */
+.drow { gap: 8px !important; flex-wrap: wrap !important; justify-content: center !important; }
+.dinp { width: 58px !important; height: 72px !important; font-size: 36px !important; }
+
+/* BOTTOM NAV: bigger but contained */
+#bnav { grid-template-columns: repeat(6, 1fr) !important; }
+.nb { font-size: 13px !important; padding: 10px 2px !important; }
+.nb .ni { font-size: 30px !important; }
+
+/* HEADER: prevent overflow */
+#hdr { grid-template-columns: auto 1fr auto auto !important; gap: 8px !important; overflow: hidden !important; }
+.hlogo { font-size: 26px !important; }
+.hbal .val { font-size: 22px !important; }
+
+/* Post-cart panel */
+.pc-panel { max-width: 100% !important; }
+
+/* Trismático grid */
+.tmgrid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+
+/* Summary rows in monto section */
+.srow .sl { font-size: 16px !important; }
 .srow .sv { font-size: 18px !important; }
 .srow.tot .sv { font-size: 22px !important; }
-.btn { font-size: 16px !important; padding: 18px !important; letter-spacing: 1px !important; }
-.ci-mod { font-size: 14px !important; }
-.ci-comb { font-size: 20px !important; }
-.ci-cost { font-size: 14px !important; }
-.ci-num { font-size: 14px !important; }
-.ball { width: 60px !important; height: 60px !important; font-size: 28px !important; }
-.vm { font-size: 20px !important; }
-.vd { font-size: 16px !important; }
-.va .v { font-size: 20px !important; }
+
+/* Buttons 2-col grid */
+[style*="grid-template-columns:1fr 1fr"] { gap: 10px !important; }
+
+/* Sorteo options */
+.sopt .sn { font-size: 16px !important; }
+.sopt .st { font-size: 15px !important; }
+.sopt { padding: 14px !important; }
+
+/* Sections padding */
+.sec { padding: 12px !important; }
+
+/* Balance display */
+.adisplay .num { font-size: 58px !important; }
+.adisplay .sign { font-size: 34px !important; }
+
+/* Plays row */
+.playsrow .lbl { font-size: 18px !important; }
+.pval { font-size: 28px !important; }
+.pcbtn { width: 46px !important; height: 46px !important; font-size: 28px !important; }
+
+/* Buttons */
+.btn { font-size: 16px !important; padding: 17px !important; }
+
+/* Verdict amounts */
+.vamts { grid-template-columns: repeat(3, 1fr) !important; }
+.va .v { font-size: 18px !important; }
 .va .l { font-size: 13px !important; }
-.bsumm .bsl { font-size: 13px !important; }
+.ve { font-size: 44px !important; }
+.vm { font-size: 20px !important; }
+
+/* Batch summary */
+.bsumm { grid-template-columns: repeat(2, 1fr) !important; }
 .bsumm .bsv { font-size: 22px !important; }
-.bri-c { font-size: 18px !important; }
-.bri-l { font-size: 15px !important; }
-.bri-p { font-size: 18px !important; }
-.hitem { padding: 14px !important; }
-.hi .hm { font-size: 14px !important; }
-.hi .hc { font-size: 18px !important; }
-.hi .hdr { font-size: 13px !important; }
-.hmoney .hv { font-size: 18px !important; }
-.hmoney .hi2 { font-size: 13px !important; }
-.mib .mn { font-size: 16px !important; }
-.mib .mp { font-size: 18px !important; }
-.mib .mc2 { font-size: 14px !important; }
-.dhint, #dhint { font-size: 15px !important; }
-.disc { font-size: 14px !important; }
-.devbadge { font-size: 13px !important; }
-.cinp { font-size: 20px !important; padding: 10px 14px !important; }
-.cinp.full { font-size: 18px !important; }
-.crow .cl { font-size: 18px !important; }
-.crow .cs { font-size: 14px !important; }
-.ores .on { font-size: 26px !important; letter-spacing: 4px !important; }
-.ores .ot { font-size: 15px !important; }
-.pc-title { font-size: 18px !important; }
-.pc-subtitle { font-size: 16px !important; }
-.pc-counter { font-size: 36px !important; }
-.sopt .sn { font-size: 18px !important; }
-.sopt .st { font-size: 16px !important; }
-.bcurr { font-size: 13px !important; }
-#amt-d { font-size: 62px !important; }
 
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
