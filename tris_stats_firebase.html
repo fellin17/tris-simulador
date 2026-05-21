@@ -4,9 +4,246 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>TRIS — Panel Global en Tiempo Real</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+// ---- RESET FUNCTIONS ----
+function toggleReset(){
+  const sec=document.getElementById('reset-section');
+  const btn=document.getElementById('btn-show-reset');
+  const isVisible=sec.style.display!=='none';
+  sec.style.display=isVisible?'none':'block';
+  btn.style.display=isVisible?'block':'none';
+  if(!isVisible) updateResetSelector();
+}
+
+function updateResetSelector(){
+  const sel=document.getElementById('reset-player-sel');
+  sel.innerHTML='<option value="all">🗑️ Borrar TODO (todos los jugadores)</option>';
+  PLAYERS.forEach(p=>{
+    sel.innerHTML+=`<option value="${p.deviceId}">👤 Solo ${p.playerName||'Jugador'}</option>`;
+  });
+}
+
+async function confirmReset(){
+  const sel=document.getElementById('reset-player-sel').value;
+  const isAll=sel==='all';
+  const msg=isAll
+    ? '⚠️ ¿Borrar TODOS los datos de TODOS los jugadores?\n\nEsto borrará historial, estadísticas y saldos de Firebase. NO se puede deshacer.'
+    : '⚠️ ¿Borrar los datos de este jugador?\n\nSe borrará su historial y estadísticas. NO se puede deshacer.';
+  if(!confirm(msg)) return;
+  if(!confirm('¿Estás SEGURO? Esta acción es PERMANENTE.')) return;
+
+  const btn=document.querySelector('.btn-danger');
+  btn.disabled=true; btn.textContent='Borrando...';
+
+  try {
+    if(isAll){
+      // Delete all players
+      const playersSnap=await db.collection('players').get();
+      const batch1=db.batch();
+      playersSnap.forEach(doc=>batch1.delete(doc.ref));
+      await batch1.commit();
+      // Delete all plays in batches of 500
+      let hasMore=true;
+      while(hasMore){
+        const snap=await db.collection('plays').limit(500).get();
+        if(snap.empty){ hasMore=false; break; }
+        const batch=db.batch();
+        snap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      showToast('✅ Todos los datos borrados');
+    } else {
+      // Delete specific player
+      await db.collection('players').doc(sel).delete();
+      // Delete their plays
+      let hasMore=true;
+      while(hasMore){
+        const snap=await db.collection('plays').where('deviceId','==',sel).limit(500).get();
+        if(snap.empty){ hasMore=false; break; }
+        const batch=db.batch();
+        snap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      const name=PLAYERS.find(p=>p.deviceId===sel)?.playerName||'Jugador';
+      showToast('✅ Datos de '+name+' borrados');
+    }
+    toggleReset();
+  } catch(e){
+    console.error(e);
+    alert('Error al borrar: '+e.message);
+  } finally {
+    btn.disabled=false; btn.textContent='🗑️ BORRAR DATOS SELECCIONADOS';
+  }
+}
+
+function showToast(msg, color='#00d4ff'){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:'+color+';color:#060811;font-family:var(--fh);font-size:11px;font-weight:700;padding:8px 18px;border-radius:20px;z-index:1000;letter-spacing:1px;white-space:nowrap';
+  t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .5s';setTimeout(()=>t.remove(),500);},3000);
+}
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js">
+// ---- RESET FUNCTIONS ----
+function toggleReset(){
+  const sec=document.getElementById('reset-section');
+  const btn=document.getElementById('btn-show-reset');
+  const isVisible=sec.style.display!=='none';
+  sec.style.display=isVisible?'none':'block';
+  btn.style.display=isVisible?'block':'none';
+  if(!isVisible) updateResetSelector();
+}
+
+function updateResetSelector(){
+  const sel=document.getElementById('reset-player-sel');
+  sel.innerHTML='<option value="all">🗑️ Borrar TODO (todos los jugadores)</option>';
+  PLAYERS.forEach(p=>{
+    sel.innerHTML+=`<option value="${p.deviceId}">👤 Solo ${p.playerName||'Jugador'}</option>`;
+  });
+}
+
+async function confirmReset(){
+  const sel=document.getElementById('reset-player-sel').value;
+  const isAll=sel==='all';
+  const msg=isAll
+    ? '⚠️ ¿Borrar TODOS los datos de TODOS los jugadores?\n\nEsto borrará historial, estadísticas y saldos de Firebase. NO se puede deshacer.'
+    : '⚠️ ¿Borrar los datos de este jugador?\n\nSe borrará su historial y estadísticas. NO se puede deshacer.';
+  if(!confirm(msg)) return;
+  if(!confirm('¿Estás SEGURO? Esta acción es PERMANENTE.')) return;
+
+  const btn=document.querySelector('.btn-danger');
+  btn.disabled=true; btn.textContent='Borrando...';
+
+  try {
+    if(isAll){
+      // Delete all players
+      const playersSnap=await db.collection('players').get();
+      const batch1=db.batch();
+      playersSnap.forEach(doc=>batch1.delete(doc.ref));
+      await batch1.commit();
+      // Delete all plays in batches of 500
+      let hasMore=true;
+      while(hasMore){
+        const snap=await db.collection('plays').limit(500).get();
+        if(snap.empty){ hasMore=false; break; }
+        const batch=db.batch();
+        snap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      showToast('✅ Todos los datos borrados');
+    } else {
+      // Delete specific player
+      await db.collection('players').doc(sel).delete();
+      // Delete their plays
+      let hasMore=true;
+      while(hasMore){
+        const snap=await db.collection('plays').where('deviceId','==',sel).limit(500).get();
+        if(snap.empty){ hasMore=false; break; }
+        const batch=db.batch();
+        snap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      const name=PLAYERS.find(p=>p.deviceId===sel)?.playerName||'Jugador';
+      showToast('✅ Datos de '+name+' borrados');
+    }
+    toggleReset();
+  } catch(e){
+    console.error(e);
+    alert('Error al borrar: '+e.message);
+  } finally {
+    btn.disabled=false; btn.textContent='🗑️ BORRAR DATOS SELECCIONADOS';
+  }
+}
+
+function showToast(msg, color='#00d4ff'){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:'+color+';color:#060811;font-family:var(--fh);font-size:11px;font-weight:700;padding:8px 18px;border-radius:20px;z-index:1000;letter-spacing:1px;white-space:nowrap';
+  t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .5s';setTimeout(()=>t.remove(),500);},3000);
+}
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js">
+// ---- RESET FUNCTIONS ----
+function toggleReset(){
+  const sec=document.getElementById('reset-section');
+  const btn=document.getElementById('btn-show-reset');
+  const isVisible=sec.style.display!=='none';
+  sec.style.display=isVisible?'none':'block';
+  btn.style.display=isVisible?'block':'none';
+  if(!isVisible) updateResetSelector();
+}
+
+function updateResetSelector(){
+  const sel=document.getElementById('reset-player-sel');
+  sel.innerHTML='<option value="all">🗑️ Borrar TODO (todos los jugadores)</option>';
+  PLAYERS.forEach(p=>{
+    sel.innerHTML+=`<option value="${p.deviceId}">👤 Solo ${p.playerName||'Jugador'}</option>`;
+  });
+}
+
+async function confirmReset(){
+  const sel=document.getElementById('reset-player-sel').value;
+  const isAll=sel==='all';
+  const msg=isAll
+    ? '⚠️ ¿Borrar TODOS los datos de TODOS los jugadores?\n\nEsto borrará historial, estadísticas y saldos de Firebase. NO se puede deshacer.'
+    : '⚠️ ¿Borrar los datos de este jugador?\n\nSe borrará su historial y estadísticas. NO se puede deshacer.';
+  if(!confirm(msg)) return;
+  if(!confirm('¿Estás SEGURO? Esta acción es PERMANENTE.')) return;
+
+  const btn=document.querySelector('.btn-danger');
+  btn.disabled=true; btn.textContent='Borrando...';
+
+  try {
+    if(isAll){
+      // Delete all players
+      const playersSnap=await db.collection('players').get();
+      const batch1=db.batch();
+      playersSnap.forEach(doc=>batch1.delete(doc.ref));
+      await batch1.commit();
+      // Delete all plays in batches of 500
+      let hasMore=true;
+      while(hasMore){
+        const snap=await db.collection('plays').limit(500).get();
+        if(snap.empty){ hasMore=false; break; }
+        const batch=db.batch();
+        snap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      showToast('✅ Todos los datos borrados');
+    } else {
+      // Delete specific player
+      await db.collection('players').doc(sel).delete();
+      // Delete their plays
+      let hasMore=true;
+      while(hasMore){
+        const snap=await db.collection('plays').where('deviceId','==',sel).limit(500).get();
+        if(snap.empty){ hasMore=false; break; }
+        const batch=db.batch();
+        snap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      const name=PLAYERS.find(p=>p.deviceId===sel)?.playerName||'Jugador';
+      showToast('✅ Datos de '+name+' borrados');
+    }
+    toggleReset();
+  } catch(e){
+    console.error(e);
+    alert('Error al borrar: '+e.message);
+  } finally {
+    btn.disabled=false; btn.textContent='🗑️ BORRAR DATOS SELECCIONADOS';
+  }
+}
+
+function showToast(msg, color='#00d4ff'){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:'+color+';color:#060811;font-family:var(--fh);font-size:11px;font-weight:700;padding:8px 18px;border-radius:20px;z-index:1000;letter-spacing:1px;white-space:nowrap';
+  t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .5s';setTimeout(()=>t.remove(),500);},3000);
+}
+
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
 :root{--bg:#06080f;--card:rgba(255,255,255,.04);--brd:rgba(0,212,255,.14);--c:#00d4ff;--g:#00ff88;--r:#ff4757;--go:#ffd700;--p:#a855f7;--tx:#e8f4f8;--tx2:#6a8ba5;--ra:14px;--fh:'Orbitron',monospace;--fb:'Rajdhani',sans-serif;}
@@ -89,6 +326,18 @@ main{max-width:900px;margin:0 auto;padding:16px}
 .no-players{background:rgba(0,212,255,.04);border:2px dashed rgba(0,212,255,.2);border-radius:var(--ra);padding:24px;text-align:center;margin-bottom:16px}
 .no-players p{font-size:12px;color:var(--tx2);line-height:1.8}
 .no-players strong{color:var(--c)}
+
+.btn-danger { background:rgba(255,71,87,.12); border:1px solid var(--r); color:var(--r);
+  padding:12px 20px; border-radius:10px; font-family:var(--fh); font-size:11px;
+  font-weight:700; letter-spacing:1px; cursor:pointer; transition:all .18s;
+  text-transform:uppercase; width:100%; margin-top:10px; }
+.btn-danger:active { transform:scale(.97); background:rgba(255,71,87,.25); }
+.reset-section { background:rgba(255,71,87,.04); border:1px solid rgba(255,71,87,.15);
+  border-radius:var(--ra); padding:16px; margin-bottom:16px; }
+.reset-section h3 { font-family:var(--fh); font-size:10px; color:var(--r);
+  letter-spacing:2px; margin-bottom:8px; }
+.reset-section p { font-size:11px; color:var(--tx2); margin-bottom:12px; line-height:1.6; }
+
 </style>
 </head>
 <body>
@@ -176,6 +425,21 @@ main{max-width:900px;margin:0 auto;padding:16px}
   <h2>CONECTANDO A FIREBASE</h2>
   <p>Cargando datos en tiempo real desde la nube...</p>
 </div>
+
+<!-- RESET SECTION -->
+<div class="reset-section" id="reset-section" style="display:none">
+  <h3>⚠️ ZONA DE BORRADO</h3>
+  <p>Estas acciones son permanentes y no se pueden deshacer. Se borrarán los datos de Firebase.</p>
+  <select id="reset-player-sel" style="background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:8px;color:var(--tx);font-family:var(--fb);font-size:12px;padding:8px 12px;width:100%;margin-bottom:10px;outline:none">
+    <option value="all">🗑️ Borrar TODO (todos los jugadores)</option>
+  </select>
+  <button class="btn-danger" onclick="confirmReset()">🗑️ BORRAR DATOS SELECCIONADOS</button>
+  <button class="btn btn-c" onclick="toggleReset()" style="margin-top:8px;display:block;width:100%;text-align:center">Cancelar</button>
+</div>
+<div style="text-align:right;margin-bottom:20px">
+  <button class="btn btn-r" onclick="toggleReset()" id="btn-show-reset" style="width:auto;font-size:10px;padding:8px 16px">🗑️ Borrar datos</button>
+</div>
+
 </main>
 
 <script>
@@ -328,6 +592,85 @@ function renderHist(){
 function filterHist(){renderHist();}
 function showMore(){HIST_N+=50;renderHist();}
 function swTab(id,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));el.classList.add('active');document.getElementById('tc-'+id).classList.add('active');}
+
+// ---- RESET FUNCTIONS ----
+function toggleReset(){
+  const sec=document.getElementById('reset-section');
+  const btn=document.getElementById('btn-show-reset');
+  const isVisible=sec.style.display!=='none';
+  sec.style.display=isVisible?'none':'block';
+  btn.style.display=isVisible?'block':'none';
+  if(!isVisible) updateResetSelector();
+}
+
+function updateResetSelector(){
+  const sel=document.getElementById('reset-player-sel');
+  sel.innerHTML='<option value="all">🗑️ Borrar TODO (todos los jugadores)</option>';
+  PLAYERS.forEach(p=>{
+    sel.innerHTML+=`<option value="${p.deviceId}">👤 Solo ${p.playerName||'Jugador'}</option>`;
+  });
+}
+
+async function confirmReset(){
+  const sel=document.getElementById('reset-player-sel').value;
+  const isAll=sel==='all';
+  const msg=isAll
+    ? '⚠️ ¿Borrar TODOS los datos de TODOS los jugadores?\n\nEsto borrará historial, estadísticas y saldos de Firebase. NO se puede deshacer.'
+    : '⚠️ ¿Borrar los datos de este jugador?\n\nSe borrará su historial y estadísticas. NO se puede deshacer.';
+  if(!confirm(msg)) return;
+  if(!confirm('¿Estás SEGURO? Esta acción es PERMANENTE.')) return;
+
+  const btn=document.querySelector('.btn-danger');
+  btn.disabled=true; btn.textContent='Borrando...';
+
+  try {
+    if(isAll){
+      // Delete all players
+      const playersSnap=await db.collection('players').get();
+      const batch1=db.batch();
+      playersSnap.forEach(doc=>batch1.delete(doc.ref));
+      await batch1.commit();
+      // Delete all plays in batches of 500
+      let hasMore=true;
+      while(hasMore){
+        const snap=await db.collection('plays').limit(500).get();
+        if(snap.empty){ hasMore=false; break; }
+        const batch=db.batch();
+        snap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      showToast('✅ Todos los datos borrados');
+    } else {
+      // Delete specific player
+      await db.collection('players').doc(sel).delete();
+      // Delete their plays
+      let hasMore=true;
+      while(hasMore){
+        const snap=await db.collection('plays').where('deviceId','==',sel).limit(500).get();
+        if(snap.empty){ hasMore=false; break; }
+        const batch=db.batch();
+        snap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      const name=PLAYERS.find(p=>p.deviceId===sel)?.playerName||'Jugador';
+      showToast('✅ Datos de '+name+' borrados');
+    }
+    toggleReset();
+  } catch(e){
+    console.error(e);
+    alert('Error al borrar: '+e.message);
+  } finally {
+    btn.disabled=false; btn.textContent='🗑️ BORRAR DATOS SELECCIONADOS';
+  }
+}
+
+function showToast(msg, color='#00d4ff'){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:'+color+';color:#060811;font-family:var(--fh);font-size:11px;font-weight:700;padding:8px 18px;border-radius:20px;z-index:1000;letter-spacing:1px;white-space:nowrap';
+  t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .5s';setTimeout(()=>t.remove(),500);},3000);
+}
+
 </script>
 </body>
 </html>
