@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TRIS — Panel Global en Tiempo Real</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+:root{--bg:#06080f;--card:rgba(255,255,255,.04);--brd:rgba(0,212,255,.14);--c:#00d4ff;--g:#00ff88;--r:#ff4757;--go:#ffd700;--p:#a855f7;--tx:#e8f4f8;--tx2:#6a8ba5;--ra:14px;--fh:'Orbitron',monospace;--fb:'Rajdhani',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{min-height:100%;background:var(--bg);color:var(--tx);font-family:var(--fb)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,212,255,.07) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 100%,rgba(168,85,247,.05) 0%,transparent 50%)}
+header{background:rgba(6,8,15,.97);border-bottom:1px solid rgba(0,212,255,.1);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+.logo{font-family:var(--fh);font-size:18px;font-weight:900;color:var(--c);text-shadow:0 0 20px rgba(0,212,255,.5);letter-spacing:3px}
+.logo span{color:var(--g)}
+.logo small{display:block;font-size:9px;color:var(--tx2);letter-spacing:2px;margin-top:2px;font-family:var(--fb)}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--r)}
+.status-dot.online{background:var(--g);box-shadow:0 0 8px var(--g);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,255,136,.4)}50%{box-shadow:0 0 0 8px rgba(0,255,136,0)}}
+.status-txt{font-size:11px;font-family:var(--fh);letter-spacing:1px}
+main{max-width:900px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--brd);border-radius:var(--ra);padding:14px;position:relative;overflow:hidden;margin-bottom:12px}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.25),transparent)}
+.stitle{font-family:var(--fh);font-size:10px;letter-spacing:2px;color:var(--c);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.stitle::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(0,212,255,.25),transparent)}
+.players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:18px}
+.pcard{background:var(--card);border:1px solid var(--brd);border-radius:var(--ra);padding:13px;position:relative;overflow:hidden}
+.pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.pcard.p0::before{background:linear-gradient(90deg,#00d4ff,transparent)}
+.pcard.p1::before{background:linear-gradient(90deg,#00ff88,transparent)}
+.pcard.p2::before{background:linear-gradient(90deg,#ffd700,transparent)}
+.pcard.p3::before{background:linear-gradient(90deg,#a855f7,transparent)}
+.pcard .online-dot{position:absolute;top:18px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--g);box-shadow:0 0 6px var(--g)}
+.pcard .pname{font-family:var(--fh);font-size:12px;font-weight:700;margin-bottom:2px}
+.pcard.p0 .pname{color:#00d4ff}.pcard.p1 .pname{color:#00ff88}.pcard.p2 .pname{color:#ffd700}.pcard.p3 .pname{color:#a855f7}
+.pcard .did{font-size:9px;color:var(--tx2);margin-bottom:9px}
+.pstat{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px}
+.pstat:last-child{border-bottom:none}
+.pstat .sl{color:var(--tx2)}.pstat .sv{font-family:var(--fh);font-size:10px;font-weight:700}
+.sv.g{color:var(--g)}.sv.r{color:var(--r)}.sv.go{color:var(--go)}.sv.c{color:var(--c)}
+.gsummary{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;margin-bottom:16px}
+.gcard{background:var(--card);border:1px solid var(--brd);border-radius:var(--ra);padding:12px;text-align:center}
+.gcard .gl{font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px}
+.gcard .gv{font-family:var(--fh);font-size:20px;font-weight:900}
+.gcard .gs{font-size:9px;color:var(--tx2);margin-top:3px}
+.gv.c{color:var(--c)}.gv.g{color:var(--g)}.gv.r{color:var(--r)}.gv.go{color:var(--go)}.gv.p{color:var(--p)}
+.tabs{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:20px;font-family:var(--fh);font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;border:1px solid rgba(0,212,255,.15);background:var(--card);color:var(--tx2);transition:all .18s}
+.tab.active{background:rgba(0,212,255,.12);border-color:var(--c);color:var(--c)}
+.tc{display:none}.tc.active{display:block}
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;margin-bottom:14px}
+@media(max-width:480px){.charts-grid{grid-template-columns:1fr}}
+.cc{background:var(--card);border:1px solid var(--brd);border-radius:var(--ra);padding:14px}
+.ct{font-size:9px;color:var(--tx2);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase}
+.lb-table{width:100%;border-collapse:collapse;margin-bottom:14px}
+.lb-table th{background:rgba(0,212,255,.08);color:var(--c);padding:7px 10px;text-align:left;font-family:var(--fh);font-size:8px;letter-spacing:1.5px}
+.lb-table td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:var(--tx2)}
+.lb-table tr:hover td{background:rgba(0,212,255,.02)}
+.lb-table td.g{color:var(--g);font-weight:700}.lb-table td.r{color:var(--r);font-weight:700}.lb-table td.go{color:var(--go);font-weight:700}
+.hi{background:var(--card);border:1px solid var(--brd);border-radius:11px;padding:9px 11px;margin-bottom:6px;display:flex;align-items:center;gap:9px}
+.hdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.hdot.w{background:var(--g);box-shadow:0 0 5px var(--g)}.hdot.l{background:var(--r)}
+.hi-body{flex:1;min-width:0}
+.hi-body .hm{font-size:10px;color:var(--c);font-weight:700}
+.hi-body .hc{font-family:var(--fh);font-size:12px;letter-spacing:1px}
+.hi-body .hd{font-size:9px;color:var(--tx2)}
+.hi-money{text-align:right;flex-shrink:0}
+.hi-money .v{font-family:var(--fh);font-size:11px;font-weight:700}
+.hi-money .v.g{color:var(--g)}.hi-money .v.r{color:var(--r)}
+.hi-money small{font-size:9px;color:var(--tx2);display:block}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot.p0{background:#00d4ff}.dot.p1{background:#00ff88}.dot.p2{background:#ffd700}.dot.p3{background:#a855f7}
+.empty{text-align:center;padding:50px 20px;color:var(--tx2)}
+.empty .ei{font-size:50px;margin-bottom:12px;opacity:.4}
+.empty h2{font-family:var(--fh);font-size:14px;margin-bottom:8px;letter-spacing:2px}
+.empty p{font-size:12px;line-height:1.7;max-width:380px;margin:0 auto}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.2);border-radius:20px;padding:4px 10px;font-size:10px;color:var(--g);font-family:var(--fh);letter-spacing:1px}
+.disc{background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.15);border-radius:9px;padding:8px 12px;font-size:10px;color:rgba(255,215,0,.6);text-align:center;margin-bottom:14px;line-height:1.6}
+.filt{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.filt select{background:var(--card);border:1px solid var(--brd);border-radius:8px;color:var(--tx);font-family:var(--fb);font-size:11px;padding:5px 9px;outline:none;cursor:pointer}
+.filt label{font-size:10px;color:var(--tx2)}
+.btn{padding:8px 16px;border-radius:10px;font-family:var(--fh);font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;border:1px solid;transition:all .18s}
+.btn-c{background:rgba(0,212,255,.1);border-color:var(--c);color:var(--c)}
+.btn-g{background:rgba(0,255,136,.1);border-color:var(--g);color:var(--g)}
+.btn-r{background:rgba(255,71,87,.1);border-color:var(--r);color:var(--r)}
+.no-players{background:rgba(0,212,255,.04);border:2px dashed rgba(0,212,255,.2);border-radius:var(--ra);padding:24px;text-align:center;margin-bottom:16px}
+.no-players p{font-size:12px;color:var(--tx2);line-height:1.8}
+.no-players strong{color:var(--c)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">TRI<span>$</span> STATS<small>PANEL GLOBAL — TIEMPO REAL 🔴</small></div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div class="live-badge"><span class="status-dot" id="sdot"></span><span id="stxt">Conectando...</span></div>
+    <div style="font-size:9px;color:var(--tx2);text-align:right">Última actualización:<br><span id="lupd">—</span></div>
+  </div>
+</header>
+
+<main>
+<div class="disc">⚠️ SIMULADOR EDUCATIVO — DINERO FICTICIO — Sin transacciones reales</div>
+
+<div id="no-players" class="no-players" style="display:none">
+  <p>Esperando jugadores...<br>
+  Cuando algún jugador abra la app <strong>Tris Simulador</strong> y haga su primera jugada,<br>
+  aparecerá aquí automáticamente en tiempo real.</p>
+</div>
+
+<div id="main-dash" style="display:none">
+
+  <div class="stitle">Jugadores activos</div>
+  <div class="players-grid" id="players-grid"></div>
+
+  <div class="stitle">Resumen global del grupo</div>
+  <div class="gsummary">
+    <div class="gcard"><div class="gl">Jugadores</div><div class="gv p" id="g-j">0</div><div class="gs">conectados</div></div>
+    <div class="gcard"><div class="gl">Apuestas</div><div class="gv c" id="g-a">0</div><div class="gs">totales</div></div>
+    <div class="gcard"><div class="gl">Invertido</div><div class="gv r" id="g-i">$0</div><div class="gs">grupo</div></div>
+    <div class="gcard"><div class="gl">Ganado</div><div class="gv g" id="g-g">$0</div><div class="gs">grupo</div></div>
+    <div class="gcard"><div class="gl">Neto grupo</div><div class="gv go" id="g-n">$0</div><div class="gs">resultado</div></div>
+    <div class="gcard"><div class="gl">Mejor</div><div class="gv p" id="g-best">—</div><div class="gs">mayor ganancia</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="swTab('graficas',this)">📊 Gráficas</div>
+    <div class="tab" onclick="swTab('ranking',this)">🏆 Ranking</div>
+    <div class="tab" onclick="swTab('historial',this)">📋 Historial</div>
+  </div>
+
+  <!-- GRÁFICAS -->
+  <div class="tc active" id="tc-graficas">
+    <div class="charts-grid">
+      <div class="cc"><div class="ct">Ganado vs Perdido — Grupo</div><canvas id="ch-pie" height="200"></canvas></div>
+      <div class="cc"><div class="ct">Neto por jugador</div><canvas id="ch-neto" height="200"></canvas></div>
+      <div class="cc"><div class="ct">Inversión vs Ganancia</div><canvas id="ch-inv" height="200"></canvas></div>
+      <div class="cc"><div class="ct">Jugadas G vs P por jugador</div><canvas id="ch-wl" height="200"></canvas></div>
+    </div>
+    <div class="cc" style="margin-bottom:12px"><div class="ct">Saldo histórico — todos los jugadores</div><canvas id="ch-bal" height="160"></canvas></div>
+    <div class="charts-grid">
+      <div class="cc"><div class="ct">Modalidades más jugadas</div><canvas id="ch-mod" height="200"></canvas></div>
+      <div class="cc"><div class="ct">% Rentabilidad por jugador</div><canvas id="ch-rent" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- RANKING -->
+  <div class="tc" id="tc-ranking">
+    <table class="lb-table" id="lb-t">
+      <tr><th>#</th><th>Jugador</th><th>Apuestas</th><th>Ganadas</th><th>Invertido</th><th>Ganado</th><th>Neto</th><th>%</th></tr>
+    </table>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="tc" id="tc-historial">
+    <div class="filt">
+      <label>Jugador:</label>
+      <select id="fp" onchange="filterHist()"><option value="all">Todos</option></select>
+      <label>Resultado:</label>
+      <select id="fr" onchange="filterHist()">
+        <option value="all">Todos</option>
+        <option value="win">Ganadas</option>
+        <option value="lose">Perdidas</option>
+      </select>
+    </div>
+    <div id="hist-list"></div>
+    <div id="hist-more" style="text-align:center;padding:8px;display:none">
+      <button class="btn btn-c" onclick="showMore()">Ver más</button>
+    </div>
+  </div>
+
+</div><!-- /main-dash -->
+<div class="empty" id="empty-state">
+  <div class="ei">☁️</div>
+  <h2>CONECTANDO A FIREBASE</h2>
+  <p>Cargando datos en tiempo real desde la nube...</p>
+</div>
+</main>
+
+<script>
+const COLORS=['#00d4ff','#00ff88','#ffd700','#a855f7'];
+const MNAMES={NI:'Núm. Inicial',NF:'Núm. Final',PI:'Par Inicial',PF:'Par Final',D3:'Directa 3',D4:'Directa 4',D5:'Directa 5',C7:'Combo 7',C10:'Combo 10',CC:'Tu propio Combo',S24:'Súper 24',S12:'Súper 12',S6:'Súper 6',S4:'Súper 4',SS6:'Súper Seis',SS3:'Súper Tres'};
+
+// FIREBASE
+const firebaseConfig={apiKey:"AIzaSyAFEUWXmoEGYskjVEPgUa6kfvcZmcWTdbI",authDomain:"tris-simulador.firebaseapp.com",projectId:"tris-simulador",storageBucket:"tris-simulador.firebasestorage.app",messagingSenderId:"839389416510",appId:"1:839389416510:web:f3feb2f9d29a32371f156f"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+
+let PLAYERS=[];
+let ALL_PLAYS=[];
+let HIST_N=50;
+let CHARTS={};
+
+// STATUS
+function setStatus(online){
+  const dot=document.getElementById('sdot');
+  const txt=document.getElementById('stxt');
+  dot.className='status-dot'+(online?' online':'');
+  txt.textContent=online?'EN VIVO':'Sin conexión';
+}
+
+// LISTEN PLAYERS (real-time)
+db.collection('players').onSnapshot(snap=>{
+  PLAYERS=[];
+  snap.forEach(doc=>PLAYERS.push(doc.data()));
+  PLAYERS.sort((a,b)=>(a.playerName||'').localeCompare(b.playerName||''));
+  setStatus(true);
+  document.getElementById('lupd').textContent=new Date().toLocaleTimeString();
+  render();
+},err=>{ setStatus(false); console.error(err); });
+
+// LISTEN PLAYS (real-time, last 500)
+db.collection('plays').orderBy('createdAt','desc').limit(500).onSnapshot(snap=>{
+  ALL_PLAYS=[];
+  snap.forEach(doc=>ALL_PLAYS.push(doc.data()));
+  renderHist();
+},err=>console.error(err));
+
+// RENDER
+function render(){
+  const hasPl=PLAYERS.length>0;
+  document.getElementById('empty-state').style.display=hasPl?'none':'block';
+  document.getElementById('main-dash').style.display=hasPl?'block':'none';
+  document.getElementById('no-players').style.display=hasPl?'none':'block';
+  if(!hasPl)return;
+  renderCards();
+  renderSummary();
+  renderCharts();
+  renderRanking();
+  renderHist();
+  updateFilter();
+}
+
+function renderCards(){
+  const g=document.getElementById('players-grid');g.innerHTML='';
+  PLAYERS.forEach((p,i)=>{
+    const stats=p.stats||{};const net=(stats.gained||0)-(stats.invested||0);
+    const d=document.createElement('div');d.className='pcard p'+i;
+    d.innerHTML='<div class="online-dot"></div>'+
+      '<div class="pname">'+( p.playerName||'Jugador')+'</div>'+
+      '<div class="did">'+( p.deviceId||'').slice(0,12)+'...</div>'+
+      '<div class="pstat"><span class="sl">Apuestas</span><span class="sv c">'+( stats.played||0)+'</span></div>'+
+      '<div class="pstat"><span class="sl">Ganadas</span><span class="sv g">'+( stats.won||0)+'</span></div>'+
+      '<div class="pstat"><span class="sl">Invertido</span><span class="sv r">$'+(stats.invested||0).toLocaleString()+'</span></div>'+
+      '<div class="pstat"><span class="sl">Ganado</span><span class="sv g">$'+(stats.gained||0).toLocaleString()+'</span></div>'+
+      '<div class="pstat"><span class="sl">Neto</span><span class="sv '+( net>=0?'g':'r')+'">'+(net>=0?'+':'')+'$'+Math.abs(net).toLocaleString()+'</span></div>'+
+      '<div class="pstat"><span class="sl">Saldo</span><span class="sv go">$'+(p.balance||0).toLocaleString()+'</span></div>';
+    g.appendChild(d);
+  });
+}
+
+function renderSummary(){
+  const t=PLAYERS.reduce((a,p)=>{const s=p.stats||{};a.played+=(s.played||0);a.won+=(s.won||0);a.inv+=(s.invested||0);a.gained+=(s.gained||0);return a;},{played:0,won:0,inv:0,gained:0});
+  const net=t.gained-t.inv;
+  document.getElementById('g-j').textContent=PLAYERS.length;
+  document.getElementById('g-a').textContent=t.played.toLocaleString();
+  document.getElementById('g-i').textContent='$'+t.inv.toLocaleString();
+  document.getElementById('g-g').textContent='$'+t.gained.toLocaleString();
+  const ne=document.getElementById('g-n');ne.textContent=(net>=0?'+':'')+'$'+Math.abs(net).toLocaleString();ne.className='gv '+(net>=0?'g':'r');
+  const best=PLAYERS.reduce((b,p)=>{const n=(p.stats?.gained||0)-(p.stats?.invested||0);return n>(b.net??-Infinity)?{name:p.playerName,net:n}:b;},{});
+  document.getElementById('g-best').textContent=best.name||'—';
+}
+
+function renderCharts(){
+  Object.values(CHARTS).forEach(c=>{try{c.destroy();}catch(e){}});CHARTS={};
+  const gc='rgba(255,255,255,.04)',tc='rgba(255,255,255,.3)';
+  const sc={x:{ticks:{color:tc,font:{size:8}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:8}},grid:{color:gc}}};
+  const names=PLAYERS.map(p=>p.playerName||'J');
+  const cols=COLORS.slice(0,PLAYERS.length);
+  const inv=PLAYERS.map(p=>p.stats?.invested||0);
+  const gained=PLAYERS.map(p=>p.stats?.gained||0);
+  const netos=PLAYERS.map(p=>(p.stats?.gained||0)-(p.stats?.invested||0));
+  const won=PLAYERS.map(p=>p.stats?.won||0);
+  const lost=PLAYERS.map(p=>(p.stats?.played||0)-(p.stats?.won||0));
+
+  const totG=gained.reduce((s,v)=>s+v,0),totL=Math.max(0,inv.reduce((s,v)=>s+v,0)-totG);
+  CHARTS.pie=new Chart(document.getElementById('ch-pie'),{type:'doughnut',data:{labels:['Ganado','Perdido'],datasets:[{data:[totG,totL],backgroundColor:['rgba(0,255,136,.7)','rgba(255,71,87,.7)'],borderColor:['#00ff88','#ff4757'],borderWidth:2,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:true,cutout:'65%',plugins:{legend:{labels:{color:'rgba(255,255,255,.6)',font:{size:10}}},tooltip:{callbacks:{label:ctx=>`$${ctx.raw.toLocaleString()}`}}}}});
+  CHARTS.neto=new Chart(document.getElementById('ch-neto'),{type:'bar',data:{labels:names,datasets:[{label:'Neto',data:netos,backgroundColor:netos.map(n=>n>=0?'rgba(0,255,136,.6)':'rgba(255,71,87,.6)'),borderColor:netos.map(n=>n>=0?'#00ff88':'#ff4757'),borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:sc}});
+  CHARTS.inv=new Chart(document.getElementById('ch-inv'),{type:'bar',data:{labels:names,datasets:[{label:'Invertido',data:inv,backgroundColor:'rgba(255,71,87,.5)',borderColor:'#ff4757',borderWidth:1,borderRadius:4},{label:'Ganado',data:gained,backgroundColor:'rgba(0,255,136,.5)',borderColor:'#00ff88',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tc,font:{size:9}}}},scales:sc}});
+  CHARTS.wl=new Chart(document.getElementById('ch-wl'),{type:'bar',data:{labels:names,datasets:[{label:'Ganadas',data:won,backgroundColor:'rgba(0,255,136,.5)',borderColor:'#00ff88',borderWidth:1,borderRadius:4},{label:'Perdidas',data:lost,backgroundColor:'rgba(255,71,87,.5)',borderColor:'#ff4757',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tc,font:{size:9}}}},scales:sc}});
+  const datasets=PLAYERS.map((p,i)=>({label:p.playerName||'J'+(i+1),data:(p.balanceLog||[]).slice(-30),borderColor:COLORS[i],backgroundColor:'transparent',borderWidth:2,tension:.4,pointRadius:1.5,pointBackgroundColor:COLORS[i]}));
+  const maxLen=Math.max(...datasets.map(d=>d.data.length),1);
+  CHARTS.bal=new Chart(document.getElementById('ch-bal'),{type:'line',data:{labels:Array.from({length:maxLen},(_,i)=>'#'+i),datasets},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tc,font:{size:9}}}},scales:sc}});
+  const mc={};PLAYERS.forEach(p=>(p.history||[]).forEach(h=>{const n=MNAMES[h.mod]||h.mod;mc[n]=(mc[n]||0)+1;}));
+  const ml=Object.keys(mc),mv=Object.values(mc);
+  const modc=['#00d4ff','#00ff88','#ffd700','#ff4757','#a855f7','#fb923c','#34d399','#f472b6','#60a5fa'];
+  if(ml.length>0)CHARTS.mod=new Chart(document.getElementById('ch-mod'),{type:'doughnut',data:{labels:ml,datasets:[{data:mv,backgroundColor:modc.slice(0,ml.length),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tc,font:{size:9}}}}}});
+  const rent=PLAYERS.map(p=>{const i2=p.stats?.invested||0,g2=p.stats?.gained||0;return i2>0?Math.round(g2/i2*100):0;});
+  CHARTS.rent=new Chart(document.getElementById('ch-rent'),{type:'bar',data:{labels:names,datasets:[{label:'% Retorno',data:rent,backgroundColor:rent.map(r=>r>=100?'rgba(0,255,136,.6)':'rgba(255,71,87,.6)'),borderColor:rent.map(r=>r>=100?'#00ff88':'#ff4757'),borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw}%`}}},scales:{...sc,y:{...sc.y,ticks:{...sc.y.ticks,callback:v=>v+'%'}}}}});
+}
+
+function renderRanking(){
+  const t=document.getElementById('lb-t');
+  const sorted=[...PLAYERS].map(p=>({...p,net:(p.stats?.gained||0)-(p.stats?.invested||0),rent:p.stats?.invested?Math.round((p.stats.gained/p.stats.invested)*100):0})).sort((a,b)=>b.net-a.net);
+  t.innerHTML='<tr><th>#</th><th>Jugador</th><th>Apuestas</th><th>Ganadas</th><th>Invertido</th><th>Ganado</th><th>Neto</th><th>%</th></tr>';
+  sorted.forEach((p,i)=>{
+    const pIdx=PLAYERS.findIndex(x=>x.deviceId===p.deviceId);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${['🥇','🥈','🥉'][i]||'#'+(i+1)}</td><td><span class="dot p${pIdx}"></span>${p.playerName||'—'}</td><td>${(p.stats?.played||0).toLocaleString()}</td><td class="g">${(p.stats?.won||0).toLocaleString()}</td><td class="r">$${(p.stats?.invested||0).toLocaleString()}</td><td class="g">$${(p.stats?.gained||0).toLocaleString()}</td><td class="${p.net>=0?'g':'r'}">${p.net>=0?'+':''} $${Math.abs(p.net).toLocaleString()}</td><td class="${p.rent>=100?'g':'r'}">${p.rent}%</td>`;
+    t.appendChild(tr);
+  });
+}
+
+function updateFilter(){
+  const sel=document.getElementById('fp');sel.innerHTML='<option value="all">Todos</option>';
+  PLAYERS.forEach(p=>sel.innerHTML+=`<option value="${p.deviceId}">${p.playerName||'Jugador'}</option>`);
+}
+
+function renderHist(){
+  const list=document.getElementById('hist-list');list.innerHTML='';
+  const fp=document.getElementById('fp')?.value||'all';
+  const fr=document.getElementById('fr')?.value||'all';
+  let plays=[...ALL_PLAYS];
+  if(fp!=='all')plays=plays.filter(h=>h.deviceId===fp);
+  if(fr==='win')plays=plays.filter(h=>h.win);
+  if(fr==='lose')plays=plays.filter(h=>!h.win);
+  const toShow=plays.slice(0,HIST_N);
+  const pIdx=p=>PLAYERS.findIndex(x=>x.deviceId===p.deviceId);
+  toShow.forEach(h=>{
+    const net=(h.prize||0)-(h.cost||0);const idx=PLAYERS.findIndex(x=>x.deviceId===h.deviceId);
+    const d=document.createElement('div');d.className='hi';
+    d.innerHTML=`<div class="hdot ${h.win?'w':'l'}"></div><div class="hi-body"><div class="hm"><span class="dot p${idx<0?0:idx}"></span>${h.playerName||'—'} · ${MNAMES[h.mod]||h.mod}</div><div class="hc">${(h.digits||[]).join('-')} → ${(h.drawn||[]).join('-')}</div><div class="hd">${h.ts||''}</div></div><div class="hi-money"><div class="v ${net>=0?'g':'r'}">${net>=0?'+':''} $${Math.abs(net).toLocaleString()}</div><small>Inv: $${(h.cost||0).toLocaleString()}</small></div>`;
+    list.appendChild(d);
+  });
+  const more=document.getElementById('hist-more');more.style.display=plays.length>HIST_N?'block':'none';
+}
+function filterHist(){renderHist();}
+function showMore(){HIST_N+=50;renderHist();}
+function swTab(id,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));el.classList.add('active');document.getElementById('tc-'+id).classList.add('active');}
+</script>
+</body>
+</html>

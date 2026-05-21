@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TRIS Simulador v3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#06080f;--card:rgba(255,255,255,0.04);--brd:rgba(0,212,255,0.15);
+  --c:#00d4ff;--g:#00ff88;--r:#ff4757;--go:#ffd700;--p:#a855f7;--or:#fb923c;
+  --tx:#e8f4f8;--tx2:#6a8ba5;--ra:14px;
+  --fh:'Orbitron',monospace;--fb:'Rajdhani',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--tx);font-family:var(--fb);display:flex;flex-direction:column;height:100dvh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,212,255,0.07) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 80% 100%,rgba(168,85,247,0.05) 0%,transparent 50%)}
+/* HEADER */
+#hdr{flex-shrink:0;padding:9px 12px;display:grid;grid-template-columns:auto 1fr auto auto;
+  gap:8px;align-items:center;border-bottom:1px solid rgba(0,212,255,0.1);
+  background:rgba(6,8,15,0.97);backdrop-filter:blur(10px);position:relative;z-index:10}
+.hlogo{font-family:var(--fh);font-size:16px;font-weight:900;color:var(--c);
+  text-shadow:0 0 15px rgba(0,212,255,0.5);letter-spacing:2px}
+.hlogo span{color:var(--g)}
+.hplayer{font-size:11px;font-weight:600;color:var(--p);text-align:center}
+.hplayer small{display:block;font-size:9px;color:var(--tx2)}
+.hbal .lbl{font-size:9px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase}
+.hbal .val{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--g);
+  text-shadow:0 0 12px rgba(0,255,136,0.4)}
+.hcart{position:relative;cursor:pointer;background:rgba(0,212,255,0.08);
+  border:1px solid rgba(0,212,255,0.2);border-radius:10px;padding:5px 9px;
+  font-size:11px;color:var(--c);font-weight:700;font-family:var(--fh);user-select:none}
+.badge{position:absolute;top:-6px;right:-6px;background:var(--r);color:#fff;
+  border-radius:50%;width:17px;height:17px;font-size:10px;display:none;align-items:center;
+  justify-content:center;font-weight:900}
+.badge.on{display:flex}
+/* MAIN */
+#main{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;z-index:1;
+  scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+#main::-webkit-scrollbar{width:3px}
+#main::-webkit-scrollbar-thumb{background:var(--c);border-radius:2px}
+/* BOTTOM NAV */
+#bnav{flex-shrink:0;display:grid;grid-template-columns:repeat(6,1fr);
+  background:rgba(6,8,15,0.97);border-top:1px solid rgba(0,212,255,0.1);
+  backdrop-filter:blur(10px);position:relative;z-index:10}
+.nb{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:6px 2px;gap:2px;border:none;background:transparent;color:var(--tx2);
+  font-size:9px;font-family:var(--fb);font-weight:600;cursor:pointer;position:relative}
+.nb .ni{font-size:18px;line-height:1}
+.nb.active{color:var(--c)}
+.nb.active::after{content:'';position:absolute;top:0;left:15%;right:15%;height:2px;
+  background:var(--c);border-radius:0 0 4px 4px;box-shadow:0 0 8px var(--c)}
+/* SECTIONS */
+.sec{display:none;padding:13px;animation:fi .25s ease}
+.sec.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--brd);border-radius:var(--ra);
+  padding:13px;position:relative;overflow:hidden;margin-bottom:10px}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,0.25),transparent)}
+/* TITLES */
+.stitle{font-family:var(--fh);font-size:10px;letter-spacing:2px;color:var(--c);
+  text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.stitle::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(0,212,255,0.25),transparent)}
+/* BUTTONS */
+.btn{width:100%;padding:13px;border-radius:var(--ra);font-family:var(--fh);font-size:12px;
+  font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all .18s;text-transform:uppercase;
+  margin-top:7px;border:1px solid}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-c{background:rgba(0,212,255,.1);border-color:var(--c);color:var(--c)}
+.btn-g{background:rgba(0,255,136,.1);border-color:var(--g);color:var(--g)}
+.btn-r{background:rgba(255,71,87,.1);border-color:var(--r);color:var(--r)}
+.btn-p{background:rgba(168,85,247,.1);border-color:var(--p);color:var(--p)}
+.btn-go{background:rgba(255,215,0,.1);border-color:var(--go);color:var(--go)}
+.btn-or{background:rgba(251,146,60,.1);border-color:var(--or);color:var(--or)}
+.btn-sm{padding:9px 14px;width:auto;font-size:10px;margin-top:0}
+/* STAT GRID */
+.sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:10px}
+.scard{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:11px;text-align:center}
+.scard .sl{font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:1px}
+.scard .sv{font-family:var(--fh);font-size:17px;font-weight:700;margin-top:3px}
+.sv.c{color:var(--c)}.sv.g{color:var(--g)}.sv.r{color:var(--r)}.sv.go{color:var(--go)}.sv.p{color:var(--p)}
+/* SORTEO BANNER */
+.sbanner{background:linear-gradient(135deg,rgba(0,212,255,.08),rgba(168,85,247,.05));
+  border:1px solid rgba(0,212,255,.2);border-radius:var(--ra);padding:12px;
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sbanner .sn{font-family:var(--fh);font-size:14px;color:var(--c);font-weight:700}
+.sbanner .st{font-size:11px;color:var(--tx2);margin-top:2px}
+.sbanner .cd{font-family:var(--fh);font-size:16px;color:var(--go);font-weight:700;text-shadow:0 0 10px rgba(255,215,0,.4)}
+.sbanner .nl{font-size:9px;color:var(--tx2)}
+/* QUICK BETS GRID */
+.qgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px}
+.qbtn{background:var(--card);border:1px solid var(--brd);border-radius:12px;
+  padding:11px 6px;cursor:pointer;text-align:center;transition:all .18s;
+  display:flex;flex-direction:column;align-items:center;gap:4px}
+.qbtn:active{transform:scale(.96)}
+.qbtn .qi{font-size:20px;line-height:1}
+.qbtn .qn{font-family:var(--fh);font-size:9px;color:var(--c);font-weight:700}
+.qbtn .qs{font-size:10px;color:var(--tx2)}
+.qbtn.go{border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.04)}.qbtn.go .qn{color:var(--go)}
+.qbtn.gr{border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.04)}.qbtn.gr .qn{color:var(--g)}
+.qbtn.pp{border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.04)}.qbtn.pp .qn{color:var(--p)}
+.qbtn.or{border-color:rgba(251,146,60,.3);background:rgba(251,146,60,.04)}.qbtn.or .qn{color:var(--or)}
+/* STEP DOTS */
+.sdots{display:flex;justify-content:center;gap:6px;margin-bottom:12px}
+.sdot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);transition:all .3s}
+.sdot.act{background:var(--c);border-color:var(--c);box-shadow:0 0 7px var(--c)}
+.sdot.done{background:var(--g);border-color:var(--g)}
+/* MODALIDADES GRID */
+.mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.mbtn{background:var(--card);border:1px solid var(--brd);border-radius:12px;
+  padding:11px 7px;cursor:pointer;text-align:center;transition:all .18s;
+  display:flex;flex-direction:column;align-items:center;gap:3px}
+.mbtn:active{transform:scale(.96)}
+.mbtn.sel{border-color:var(--c);background:rgba(0,212,255,.1);box-shadow:0 0 15px rgba(0,212,255,.1)}
+.mbtn .mi{font-size:19px}
+.mbtn .mn{font-family:var(--fh);font-size:9px;color:var(--c);font-weight:700}
+.mbtn .mp{font-size:10px;color:var(--tx2)}
+.mbtn .mc{font-size:11px;color:var(--g);font-weight:600}
+/* CUSTOM COMBO */
+.cc-row{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  background:var(--card);border:1px solid var(--brd);border-radius:10px;margin-bottom:7px;transition:all .2s}
+.cc-row.sel{border-color:var(--c);background:rgba(0,212,255,.07)}
+.cc-toggle{width:40px;height:22px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-radius:11px;position:relative;cursor:pointer;transition:all .2s;flex-shrink:0}
+.cc-toggle.on{background:var(--c);border-color:var(--c)}
+.cc-toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;
+  background:#fff;border-radius:50%;transition:all .2s}
+.cc-toggle.on::after{left:20px}
+.cc-info{flex:1}
+.cc-name{font-size:12px;font-weight:700;color:var(--tx)}
+.cc-desc{font-size:10px;color:var(--tx2)}
+.cc-prize{font-size:11px;color:var(--g);font-weight:600}
+.cc-amt{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.cc-amt input{width:52px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);
+  border-radius:7px;color:var(--tx);font-family:var(--fh);font-size:13px;
+  padding:5px 7px;text-align:center;outline:none;-moz-appearance:textfield}
+.cc-amt input::-webkit-outer-spin-button,.cc-amt input::-webkit-inner-spin-button{-webkit-appearance:none}
+.cc-total{background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(255,215,0,.04));
+  border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:10px 14px;
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+/* DIGIT INPUTS */
+.drow{display:flex;gap:6px;justify-content:center;margin:14px 0;flex-wrap:wrap}
+.dinp{width:46px;height:56px;background:rgba(0,212,255,.05);
+  border:2px solid rgba(0,212,255,.2);border-radius:10px;color:var(--tx);
+  font-family:var(--fh);font-size:24px;font-weight:700;text-align:center;outline:none;
+  caret-color:var(--c);-webkit-appearance:none;-moz-appearance:textfield;cursor:default}
+.dinp::-webkit-outer-spin-button,.dinp::-webkit-inner-spin-button{-webkit-appearance:none}
+.dinp.f{border-color:rgba(0,212,255,.5);color:var(--c)}
+.numpad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.npk{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.1);
+  border-radius:9px;padding:11px 5px;color:var(--tx);font-family:var(--fh);
+  font-size:16px;font-weight:700;cursor:pointer;text-align:center;transition:all .12s}
+.npk:active{background:rgba(0,212,255,.2);transform:scale(.94)}
+.npk.del{color:var(--r);font-size:12px;font-family:var(--fb)}
+.npk.clr{color:var(--tx2);font-size:11px;font-family:var(--fb)}
+.npk.rnd{background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3);color:var(--p)}
+/* AMOUNT */
+.adisplay{text-align:center;margin:12px 0}
+.adisplay .sign{font-size:24px;color:var(--tx2)}
+.adisplay .num{font-family:var(--fh);font-size:44px;font-weight:900;color:var(--go);
+  text-shadow:0 0 20px rgba(255,215,0,.4)}
+.apreset{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:9px}
+.apb{background:var(--card);border:1px solid var(--brd);border-radius:7px;
+  padding:8px;color:var(--tx);font-family:var(--fh);font-size:11px;cursor:pointer;text-align:center}
+.apb:active,.apb.act{background:rgba(0,212,255,.15);border-color:var(--c);color:var(--c)}
+.playsrow{display:flex;align-items:center;justify-content:space-between;
+  background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:11px 13px;margin-top:9px}
+.playsrow .lbl{font-size:13px;font-weight:600;color:var(--tx2)}
+.pctrl{display:flex;align-items:center;gap:9px}
+.pcbtn{width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.1);
+  border:1px solid rgba(0,212,255,.3);color:var(--c);font-size:19px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .2s}
+.pcbtn:active{background:rgba(0,212,255,.25)}
+.pval{font-family:var(--fh);font-size:20px;font-weight:700;min-width:24px;text-align:center}
+/* SUMMARY ROW */
+.srow{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.srow:last-child{border-bottom:none}
+.srow .sl{font-size:12px;color:var(--tx2)}
+.srow .sv{font-size:13px;font-weight:600}
+.srow.tot .sl{font-size:13px;font-weight:700;color:var(--tx)}
+.srow.tot .sv{font-family:var(--fh);font-size:16px;color:var(--go)}
+/* POST-CART OVERLAY */
+.post-cart{display:none;position:fixed;inset:0;background:rgba(6,8,15,.92);z-index:100;
+  backdrop-filter:blur(6px);align-items:flex-end;justify-content:center}
+.post-cart.show{display:flex}
+.pc-panel{background:rgba(10,14,30,.98);border:1px solid rgba(0,212,255,.2);
+  border-radius:20px 20px 0 0;padding:20px 16px;width:100%;max-width:500px}
+.pc-title{font-family:var(--fh);font-size:13px;color:var(--g);text-align:center;margin-bottom:6px;font-weight:700}
+.pc-subtitle{font-size:12px;color:var(--tx2);text-align:center;margin-bottom:16px}
+.pc-counter{font-family:var(--fh);font-size:28px;font-weight:900;color:var(--c);
+  text-align:center;text-shadow:0 0 20px rgba(0,212,255,.4);margin-bottom:16px}
+.pc-btns{display:flex;flex-direction:column;gap:8px}
+.pc-btns .btn{margin-top:0}
+/* CART */
+.ci{background:var(--card);border:1px solid var(--brd);border-radius:11px;
+  padding:9px 11px;margin-bottom:7px;display:flex;align-items:center;gap:9px}
+.ci-num{font-family:var(--fh);font-size:10px;color:var(--tx2);min-width:20px}
+.ci-body{flex:1;min-width:0}
+.ci-mod{font-size:10px;color:var(--c);font-weight:700}
+.ci-comb{font-family:var(--fh);font-size:14px;color:var(--tx);letter-spacing:2px}
+.ci-cost{font-size:10px;color:var(--tx2)}
+.ci-del{background:none;border:none;color:var(--r);font-size:16px;cursor:pointer;padding:4px;flex-shrink:0}
+/* RESULT */
+.rdrawn{text-align:center;margin-bottom:14px}
+.rt{font-family:var(--fh);font-size:9px;color:var(--tx2);letter-spacing:2px;margin-bottom:10px}
+.balls{display:flex;gap:7px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
+.ball{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--fh);font-size:21px;font-weight:900}
+.ball.roll{animation:rollIn .5s cubic-bezier(.175,.885,.32,1.275) both}
+@keyframes rollIn{from{transform:scale(0) rotate(-180deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.bd{background:linear-gradient(135deg,#1a3a5c,#0d2040);border:2px solid rgba(0,212,255,.3);color:var(--c)}
+.bm{background:linear-gradient(135deg,#0d4a2a,#052015);border:2px solid var(--g);color:var(--g);box-shadow:0 0 18px rgba(0,255,136,.4)}
+.verdict{text-align:center;padding:16px;border-radius:var(--ra);margin-bottom:10px}
+.verdict.win{background:linear-gradient(135deg,rgba(0,255,136,.1),rgba(0,255,136,.04));border:1px solid rgba(0,255,136,.3)}
+.verdict.lose{background:linear-gradient(135deg,rgba(255,71,87,.1),rgba(255,71,87,.04));border:1px solid rgba(255,71,87,.3)}
+.verdict.partial{background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,215,0,.04));border:1px solid rgba(255,215,0,.3)}
+.ve{font-size:36px;margin-bottom:5px}
+.vm{font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:5px}
+.vd{font-size:11px;color:var(--tx2)}
+.vamts{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.va{text-align:center}
+.va .v{font-family:var(--fh);font-size:14px;font-weight:700}
+.va .l{font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+/* BATCH SUMMARY */
+.bsumm{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px;
+  background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.12);
+  border-radius:var(--ra);padding:11px}
+.bsumm .bsa{text-align:center}
+.bsumm .bsl{font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:1px}
+.bsumm .bsv{font-family:var(--fh);font-size:15px;font-weight:700;margin-top:2px}
+/* BATCH RESULTS LIST */
+.bri{padding:7px 10px;border-radius:9px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
+.bri.w{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.18)}
+.bri.l{background:rgba(255,71,87,.05);border:1px solid rgba(255,71,87,.1)}
+.bri-l{font-size:11px;color:var(--tx2)}
+.bri-c{font-family:var(--fh);font-size:13px;letter-spacing:1px}
+.bri-p{font-family:var(--fh);font-size:13px;font-weight:700}
+/* HISTORIAL */
+.hitem{background:var(--card);border:1px solid var(--brd);border-radius:11px;
+  padding:9px 11px;margin-bottom:7px;display:flex;align-items:center;gap:9px}
+.hdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.hdot.w{background:var(--g);box-shadow:0 0 6px var(--g)}
+.hdot.l{background:var(--r);box-shadow:0 0 6px var(--r)}
+.hdot.par{background:var(--go);box-shadow:0 0 6px var(--go)}
+.hi{flex:1;min-width:0}
+.hi .hm{font-size:10px;color:var(--c);font-weight:700}
+.hi .hc{font-family:var(--fh);font-size:13px;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi .hdr{font-size:9px;color:var(--tx2)}
+.hmoney{text-align:right;flex-shrink:0}
+.hmoney .hv{font-family:var(--fh);font-size:12px;font-weight:700}
+.hmoney .hv.w{color:var(--g)}.hmoney .hv.l{color:var(--r)}
+.hmoney .hi2{font-size:9px;color:var(--tx2)}
+/* CHARTS */
+.cc{background:var(--card);border:1px solid var(--brd);border-radius:var(--ra);padding:13px;margin-bottom:10px}
+.ct{font-size:10px;color:var(--tx2);letter-spacing:1px;margin-bottom:9px;text-transform:uppercase}
+/* PRIZES TABLE */
+.ptable{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px}
+.ptable th{background:rgba(0,212,255,.1);color:var(--c);padding:6px 8px;text-align:left;font-family:var(--fh);font-size:9px;letter-spacing:1px}
+.ptable td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx2)}
+.ptable td:last-child{color:var(--g);font-family:var(--fh);font-size:10px;font-weight:700}
+.ptable tr:hover td{background:rgba(0,212,255,.03)}
+/* CONFIG */
+.crow{background:var(--card);border:1px solid var(--brd);border-radius:11px;
+  padding:11px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+.crow .cl{font-size:13px;font-weight:600}
+.crow .cs{font-size:10px;color:var(--tx2);margin-top:2px}
+.cinp{background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);
+  border-radius:7px;color:var(--tx);font-family:var(--fh);font-size:14px;
+  padding:6px 9px;width:100px;text-align:right;outline:none;-moz-appearance:textfield}
+.cinp::-webkit-outer-spin-button,.cinp::-webkit-inner-spin-button{-webkit-appearance:none}
+.cinp.full{width:100%;margin-top:5px;text-align:left;font-family:var(--fb);font-size:14px}
+/* OFFICIAL */
+.ores{background:var(--card);border:1px solid var(--brd);border-radius:10px;
+  padding:9px 11px;margin-bottom:6px;display:flex;justify-content:space-between;
+  align-items:center;cursor:pointer;transition:all .2s}
+.ores:active,.ores.used{background:rgba(0,255,136,.07);border-color:var(--g)}
+.ores .on{font-family:var(--fh);font-size:17px;letter-spacing:3px;color:var(--go)}
+.ores .ot{font-size:11px;color:var(--tx2)}
+/* TRISMÁTICO */
+.tmgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+/* TOAST */
+.toast{position:fixed;top:62px;left:50%;transform:translateX(-50%) translateY(-8px);
+  background:rgba(0,212,255,.93);color:var(--bg);font-family:var(--fh);font-size:10px;
+  font-weight:700;letter-spacing:1px;padding:8px 16px;border-radius:20px;z-index:1001;
+  opacity:0;transition:all .25s;white-space:nowrap;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* MISC */
+.devbadge{background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.18);
+  border-radius:8px;padding:5px 9px;font-size:9px;color:var(--p);font-family:var(--fh);
+  letter-spacing:1px;text-align:center;margin-bottom:9px}
+.disc{background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.15);
+  border-radius:9px;padding:8px 11px;font-size:10px;color:rgba(255,215,0,.6);
+  text-align:center;margin-top:10px;line-height:1.6}
+.mib{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.1);
+  border-radius:9px;padding:8px 11px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.mib .mn{font-weight:700;color:var(--c);font-size:12px}
+.mib .mp{font-family:var(--fh);font-size:13px;color:var(--go)}
+.mib .mc2{font-size:10px;color:var(--tx2)}
+.loading{text-align:center;padding:16px;color:var(--tx2);font-size:12px}
+.spin{display:inline-block;width:18px;height:18px;border:2px solid rgba(0,212,255,.2);
+  border-top-color:var(--c);border-radius:50%;animation:spin .8s linear infinite;margin-right:7px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sorteo-list{display:flex;flex-direction:column;gap:6px}
+.sopt{display:flex;justify-content:space-between;align-items:center;background:var(--card);
+  border:1px solid var(--brd);border-radius:11px;padding:11px 13px;cursor:pointer;transition:all .2s}
+.sopt:active{background:rgba(0,212,255,.07)}
+.sopt.sel{border-color:var(--c);background:rgba(0,212,255,.07)}
+.sopt .sn{font-size:13px;font-weight:600}
+.sopt .st{font-family:var(--fh);font-size:12px;color:var(--c)}
+.bcurr{font-size:9px;background:var(--c);color:var(--bg);padding:2px 6px;border-radius:20px;font-weight:700}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- POST-CART OVERLAY -->
+<div class="post-cart" id="post-cart">
+  <div class="pc-panel">
+    <div class="pc-title">✅ ¡Apuesta agregada al carrito!</div>
+    <div class="pc-subtitle" id="pc-sub">—</div>
+    <div class="pc-counter" id="pc-counter">0 en carrito</div>
+    <div class="pc-btns">
+      <button class="btn btn-g" onclick="continueWithSameMod()" style="margin-top:0">🎲 Otra combinación (misma modalidad)</button>
+      <button class="btn btn-c" onclick="continueNewMod()" style="margin-top:6px">🔄 Cambiar modalidad</button>
+      <button class="btn btn-p" onclick="goCart()" style="margin-top:6px">🛒 Ver carrito y simular</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div class="hlogo">TRI<span>$</span></div>
+  <div class="hplayer"><span id="h-name">Jugador</span><small id="h-dev">—</small></div>
+  <div class="hbal"><div class="lbl">SALDO</div><div class="val" id="h-bal">$0</div></div>
+  <div class="hcart" onclick="navTo('carrito')">🛒<span id="cbadge" class="badge">0</span></div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div class="sec active" id="sec-dash">
+    <div class="sbanner" id="d-banner">
+      <div><div class="sn" id="d-sname">—</div><div class="st" id="d-stime">—</div></div>
+      <div style="text-align:right"><div class="nl" id="d-nl">PRÓXIMO</div><div class="cd" id="d-cd">—</div></div>
+    </div>
+    <div class="sgrid">
+      <div class="scard"><div class="sl">Jugados</div><div class="sv c" id="s-j">0</div></div>
+      <div class="scard"><div class="sl">Ganados</div><div class="sv g" id="s-g">0</div></div>
+      <div class="scard"><div class="sl">Invertido</div><div class="sv r" id="s-i">$0</div></div>
+      <div class="scard"><div class="sl">Neto</div><div class="sv go" id="s-n">$0</div></div>
+    </div>
+    <div class="stitle">Apuestas rápidas</div>
+    <div class="qgrid">
+      <div class="qbtn go" onclick="quickBet('C7')"><span class="qi">🎰</span><span class="qn">COMBOMÁTICO 7</span><span class="qs">Auto · $7</span></div>
+      <div class="qbtn go" onclick="quickBet('C10')"><span class="qi">💎</span><span class="qn">COMBOMÁTICO 10</span><span class="qs">Auto · $10</span></div>
+      <div class="qbtn pp" onclick="showTrism()"><span class="qi">🎲</span><span class="qn">TRISMÁTICO</span><span class="qs">Elige modalidad</span></div>
+      <div class="qbtn gr" onclick="batchCart('C7',30)"><span class="qi">⚡</span><span class="qn">30×COMBO7</span><span class="qs">Batch carrito</span></div>
+      <div class="qbtn gr" onclick="batchCart('C10',30)"><span class="qi">💥</span><span class="qn">30×COMBO10</span><span class="qs">Batch carrito</span></div>
+      <div class="qbtn or" onclick="goApuesta()"><span class="qi">🎯</span><span class="qn">MANUAL</span><span class="qs">Tu número</span></div>
+    </div>
+    <div class="disc">⚠️ SIMULADOR EDUCATIVO — DINERO FICTICIO — Sin pagos reales</div>
+  </div>
+
+  <!-- STEP 0: SORTEO -->
+  <div class="sec" id="sec-sorteo">
+    <div class="sdots"><div class="sdot act"></div><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div></div>
+    <div class="stitle">Elige el sorteo</div>
+    <div class="sorteo-list" id="sort-list"></div>
+    <button class="btn btn-c" onclick="step(1)">CONTINUAR →</button>
+    <button class="btn btn-r" onclick="navTo('dash')">Cancelar</button>
+  </div>
+
+  <!-- STEP 1: MODALIDAD -->
+  <div class="sec" id="sec-mod">
+    <div class="sdots"><div class="sdot done"></div><div class="sdot act"></div><div class="sdot"></div><div class="sdot"></div></div>
+    <div class="stitle">Elige la modalidad</div>
+    <div class="mgrid">
+      <button class="mbtn" onclick="selMod('NI')" id="m-NI"><span class="mi">1️⃣</span><span class="mn">NÚM. INICIAL</span><span class="mp">1er dígito exacto</span><span class="mc">$1→$5</span></button>
+      <button class="mbtn" onclick="selMod('NF')" id="m-NF"><span class="mi">🔚</span><span class="mn">NÚM. FINAL</span><span class="mp">Último exacto</span><span class="mc">$1→$5</span></button>
+      <button class="mbtn" onclick="selMod('PI')" id="m-PI"><span class="mi">🔛</span><span class="mn">PAR INICIAL</span><span class="mp">1os 2 exactos</span><span class="mc">$1→$50</span></button>
+      <button class="mbtn" onclick="selMod('PF')" id="m-PF"><span class="mi">🔜</span><span class="mn">PAR FINAL</span><span class="mp">Últimos 2 exactos</span><span class="mc">$1→$50</span></button>
+      <button class="mbtn" onclick="selMod('D3')" id="m-D3"><span class="mi">3️⃣</span><span class="mn">DIRECTA 3</span><span class="mp">Últimos 3 exactos</span><span class="mc">$1→$500</span></button>
+      <button class="mbtn" onclick="selMod('D4')" id="m-D4"><span class="mi">4️⃣</span><span class="mn">DIRECTA 4</span><span class="mp">Últimos 4 exactos</span><span class="mc">$1→$5,000</span></button>
+      <button class="mbtn" onclick="selMod('D5')" id="m-D5"><span class="mi">5️⃣</span><span class="mn">DIRECTA 5</span><span class="mp">Los 5 exactos</span><span class="mc">$1→$50,000</span></button>
+      <button class="mbtn" onclick="selMod('C7')" id="m-C7"><span class="mi">🎰</span><span class="mn">COMBO 7</span><span class="mp">7 modalidades</span><span class="mc">$7 fijo</span></button>
+      <button class="mbtn" onclick="selMod('C10')" id="m-C10"><span class="mi">💎</span><span class="mn">COMBO 10</span><span class="mp">7 mod. premium</span><span class="mc">$10 fijo</span></button>
+      <button class="mbtn" onclick="selMod('CC')" id="m-CC"><span class="mi">🛠️</span><span class="mn">TU PROPIO COMBO</span><span class="mp">Elige modalidades</span><span class="mc">Personalizado</span></button>
+      <button class="mbtn" onclick="selMod('S24')" id="m-S24"><span class="mi">🔓</span><span class="mn">SÚPER 24</span><span class="mp">4 difs · sin orden</span><span class="mc">$24→$5,000</span></button>
+      <button class="mbtn" onclick="selMod('S12')" id="m-S12"><span class="mi">🔑</span><span class="mn">SÚPER 12</span><span class="mp">2ig+2dif · sin orden</span><span class="mc">$12→$5,000</span></button>
+      <button class="mbtn" onclick="selMod('S6')" id="m-S6"><span class="mi">🔐</span><span class="mn">SÚPER 6</span><span class="mp">2 pares · sin orden</span><span class="mc">$6→$5,000</span></button>
+      <button class="mbtn" onclick="selMod('S4')" id="m-S4"><span class="mi">🔒</span><span class="mn">SÚPER 4</span><span class="mp">3ig+1dif · sin orden</span><span class="mc">$4→$5,000</span></button>
+      <button class="mbtn" onclick="selMod('SS6')" id="m-SS6"><span class="mi">🎯</span><span class="mn">SÚPER SEIS</span><span class="mp">3 difs · últimas 3</span><span class="mc">$6→$500</span></button>
+      <button class="mbtn" onclick="selMod('SS3')" id="m-SS3"><span class="mi">🎪</span><span class="mn">SÚPER TRES</span><span class="mp">2ig+1dif · últimas 3</span><span class="mc">$3→$500</span></button>
+    </div>
+    <button class="btn btn-c" onclick="step(2)" id="btn-n2" style="margin-top:10px">CONTINUAR →</button>
+    <button class="btn btn-r" onclick="step0()">← Atrás</button>
+  </div>
+
+  <!-- TU PROPIO COMBO -->
+  <div class="sec" id="sec-cc">
+    <div class="stitle">Tu propio Combo</div>
+    <div id="cc-rows"></div>
+    <div class="cc-total">
+      <div><div style="font-size:10px;color:var(--tx2)">Total a apostar</div><div style="font-family:var(--fh);font-size:18px;color:var(--go)" id="cc-tot">$0</div></div>
+      <div style="font-size:11px;color:var(--tx2)">Selecciona<br>al menos 1</div>
+    </div>
+    <button class="btn btn-c" onclick="step(2)">CONTINUAR → (Ingresa tus números)</button>
+    <button class="btn btn-r" onclick="step(1)">← Atrás</button>
+  </div>
+
+  <!-- STEP 2: COMBINACIÓN -->
+  <div class="sec" id="sec-comb">
+    <div class="sdots"><div class="sdot done"></div><div class="sdot done"></div><div class="sdot act"></div><div class="sdot"></div></div>
+    <div class="stitle">Tu combinación</div>
+    <div class="mib" id="mib"></div>
+    <div style="font-size:10px;color:var(--tx2);text-align:center;margin-bottom:3px" id="dhint">—</div>
+    <div class="drow" id="drow"></div>
+    <div class="numpad">
+      <button class="npk" onclick="npk(7)">7</button><button class="npk" onclick="npk(8)">8</button>
+      <button class="npk" onclick="npk(9)">9</button><button class="npk del" onclick="npDel()">⌫</button>
+      <button class="npk clr" onclick="npClr()">CLR</button>
+      <button class="npk" onclick="npk(4)">4</button><button class="npk" onclick="npk(5)">5</button>
+      <button class="npk" onclick="npk(6)">6</button>
+      <button class="npk" onclick="npk(1)">1</button><button class="npk" onclick="npk(2)">2</button>
+      <button class="npk" onclick="npk(3)">3</button>
+      <button class="npk" onclick="npk(0)" style="grid-column:span 2">0</button>
+      <button class="npk rnd" onclick="rndFill()">🎲</button>
+    </div>
+    <button class="btn btn-c" onclick="step(3)" id="btn-n3" style="margin-top:10px">CONTINUAR →</button>
+    <button class="btn btn-r" onclick="backFromComb()">← Atrás</button>
+  </div>
+
+  <!-- STEP 3: MONTO -->
+  <div class="sec" id="sec-monto">
+    <div class="sdots"><div class="sdot done"></div><div class="sdot done"></div><div class="sdot done"></div><div class="sdot act"></div></div>
+    <div class="stitle">Monto de apuesta</div>
+    <div class="adisplay"><span class="sign">$</span><span class="num" id="amt-d">1</span></div>
+    <div class="apreset">
+      <button class="apb" onclick="setAmt(1)">$1</button><button class="apb" onclick="setAmt(5)">$5</button>
+      <button class="apb" onclick="setAmt(10)">$10</button><button class="apb" onclick="setAmt(20)">$20</button>
+      <button class="apb" onclick="setAmt(50)">$50</button><button class="apb" onclick="setAmt(100)">$100</button>
+      <button class="apb" onclick="setAmt(500)">$500</button><button class="apb" onclick="setAmt(1000)">$1K</button>
+    </div>
+    <div class="playsrow">
+      <div class="lbl">Jugadas</div>
+      <div class="pctrl">
+        <button class="pcbtn" onclick="chgP(-1)">−</button>
+        <span class="pval" id="pval">1</span>
+        <button class="pcbtn" onclick="chgP(1)">+</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="srow"><span class="sl">Costo modalidad</span><span class="sv" id="mc-lbl">$1</span></div>
+      <div class="srow"><span class="sl">Jugadas</span><span class="sv" id="pl-lbl">×1</span></div>
+      <div class="srow tot"><span class="sl">TOTAL</span><span class="sv" id="tc-lbl">$1</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">
+      <button class="btn btn-p" onclick="addCart()" style="margin-top:0">🛒 AL CARRITO</button>
+      <button class="btn btn-g" onclick="simNow()" style="margin-top:0">⚡ SIMULAR</button>
+    </div>
+    <button class="btn btn-r" onclick="step(2)">← Atrás</button>
+  </div>
+
+  <!-- CARRITO -->
+  <div class="sec" id="sec-carrito">
+    <div class="stitle">Carrito — <span id="cart-cnt-lbl" style="color:var(--g)">0 apuestas</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px">
+      <button class="btn btn-c btn-sm" onclick="goApuesta()" style="width:100%">+ Agregar manual</button>
+      <button class="btn btn-p btn-sm" onclick="showTrism()" style="width:100%">🎲 Trismático</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px">
+      <button class="btn btn-go btn-sm" onclick="batchCart('C7',30)" style="width:100%">⚡ +30 Combo7</button>
+      <button class="btn btn-go btn-sm" onclick="batchCart('C10',30)" style="width:100%">⚡ +30 Combo10</button>
+    </div>
+    <div id="cart-empty" style="text-align:center;padding:25px;color:var(--tx2);display:none"><div style="font-size:28px">🛒</div><div style="margin-top:7px">El carrito está vacío</div></div>
+    <div id="cart-items"></div>
+    <div id="cart-footer" style="display:none">
+      <div class="card">
+        <div class="srow tot"><span class="sl">TOTAL CARRITO</span><span class="sv" id="cart-total">$0</span></div>
+      </div>
+      <button class="btn btn-g" onclick="simCart()">⚡ SIMULAR TODO EL CARRITO</button>
+      <button class="btn btn-c" onclick="navTo('oficial')">🌐 Usar resultado oficial</button>
+      <button class="btn btn-r" onclick="clearCart()">🗑️ Vaciar carrito</button>
+    </div>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="sec" id="sec-result">
+    <div class="stitle">Resultado</div>
+    <div class="rdrawn">
+      <div class="rt">NÚMEROS SORTEADOS</div>
+      <div class="balls" id="r-balls"></div>
+      <div style="font-family:var(--fh);font-size:11px;color:var(--tx2);letter-spacing:3px" id="r-str">—</div>
+    </div>
+    <div class="verdict" id="verdict">
+      <div class="ve" id="v-e">🎯</div>
+      <div class="vm" id="v-m">—</div>
+      <div class="vd" id="v-d">—</div>
+      <div class="vamts">
+        <div class="va"><div class="v" id="v-i" style="color:var(--r)">—</div><div class="l">Apostado</div></div>
+        <div class="va"><div class="v" id="v-w" style="color:var(--g)">—</div><div class="l">Ganado</div></div>
+        <div class="va"><div class="v" id="v-n" style="color:var(--go)">—</div><div class="l">Neto</div></div>
+      </div>
+    </div>
+    <div id="breakdown"></div>
+    <div id="batch-list"></div>
+    <button class="btn btn-c" onclick="goApuesta()">⚡ Nueva apuesta manual</button>
+    <button class="btn btn-g" onclick="navTo('carrito')">🛒 Volver al carrito</button>
+    <button class="btn btn-r" onclick="navTo('dash')" style="margin-top:6px">Ir al Inicio</button>
+  </div>
+
+  <!-- OFICIAL -->
+  <div class="sec" id="sec-oficial">
+    <div class="stitle">Resultado Oficial LOTENAL</div>
+    <button class="btn btn-c" onclick="fetchOres()" id="btn-fetch">🌐 Consultar loterianacional.gob.mx</button>
+    <div style="font-size:10px;color:var(--tx2);text-align:center;margin:5px 0 10px">Tris/Resultados — via proxy CORS</div>
+    <div id="o-loading" style="display:none"><div class="loading"><span class="spin"></span>Consultando...</div></div>
+    <div id="o-list"></div>
+    <div class="stitle" style="margin-top:12px">Ingresar manualmente</div>
+    <div style="display:flex;gap:7px;margin-bottom:7px">
+      <input type="text" class="cinp full" id="m-res" placeholder="Ej: 54874" maxlength="5" style="flex:1">
+      <button class="btn btn-g btn-sm" onclick="useManual()" style="flex-shrink:0">Usar</button>
+    </div>
+    <div id="used-banner" style="display:none" class="devbadge">✅ Resultado cargado: <span id="used-n">—</span></div>
+    <button class="btn btn-p" onclick="navTo('carrito')" style="margin-top:10px">← Ir al carrito</button>
+  </div>
+
+  <!-- TRISMÁTICO -->
+  <div class="sec" id="sec-trism">
+    <div class="stitle">Trismático / Combomático</div>
+    <div class="stitle" style="font-size:9px">Modalidad</div>
+    <div class="tmgrid" id="tm-grid">
+      <button class="mbtn sel" onclick="selTm('C7')" id="tm-C7"><span class="mi">🎰</span><span class="mn">COMBO 7</span><span class="mc">$7</span></button>
+      <button class="mbtn" onclick="selTm('C10')" id="tm-C10"><span class="mi">💎</span><span class="mn">COMBO 10</span><span class="mc">$10</span></button>
+      <button class="mbtn" onclick="selTm('D5')" id="tm-D5"><span class="mi">5️⃣</span><span class="mn">DIRECTA 5</span><span class="mc">$1</span></button>
+      <button class="mbtn" onclick="selTm('D3')" id="tm-D3"><span class="mi">3️⃣</span><span class="mn">DIRECTA 3</span><span class="mc">$1</span></button>
+      <button class="mbtn" onclick="selTm('PF')" id="tm-PF"><span class="mi">🔜</span><span class="mn">PAR FINAL</span><span class="mc">$1</span></button>
+      <button class="mbtn" onclick="selTm('NF')" id="tm-NF"><span class="mi">🔚</span><span class="mn">NÚM FINAL</span><span class="mc">$1</span></button>
+    </div>
+    <div class="playsrow" style="margin-top:10px">
+      <div class="lbl">¿Cuántos?</div>
+      <div class="pctrl">
+        <button class="pcbtn" onclick="chgTc(-5)">−5</button>
+        <button class="pcbtn" onclick="chgTc(-1)" style="width:28px;height:28px;font-size:16px">−</button>
+        <span class="pval" id="tc-val">1</span>
+        <button class="pcbtn" onclick="chgTc(1)" style="width:28px;height:28px;font-size:16px">+</button>
+        <button class="pcbtn" onclick="chgTc(5)">+5</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:9px">
+      <div class="srow"><span class="sl">Modalidad</span><span class="sv" id="tm-mod-lbl">Combo 7</span></div>
+      <div class="srow"><span class="sl">Cantidad</span><span class="sv" id="tm-cnt-lbl">1</span></div>
+      <div class="srow tot"><span class="sl">TOTAL</span><span class="sv" id="tm-tot">$7</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">
+      <button class="btn btn-p" onclick="trismCart()" style="margin-top:0">🛒 AL CARRITO</button>
+      <button class="btn btn-g" onclick="trismSim()" style="margin-top:0">⚡ SIMULAR</button>
+    </div>
+    <button class="btn btn-r" onclick="navTo('dash')">← Cancelar</button>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="sec" id="sec-hist">
+    <div class="stitle">Historial de jugadas</div>
+    <div id="hist-list"></div>
+  </div>
+
+  <!-- ESTADÍSTICAS -->
+  <div class="sec" id="sec-stats">
+    <div class="stitle">Estadísticas</div>
+    <div class="cc"><div class="ct">Ganado vs Perdido</div><canvas id="ch-pie" height="160"></canvas></div>
+    <div class="cc"><div class="ct">Saldo histórico</div><canvas id="ch-bal" height="140"></canvas></div>
+    <div class="cc"><div class="ct">Últimas 20 jugadas</div><canvas id="ch-bar" height="140"></canvas></div>
+    <div class="cc"><div class="ct">Por modalidad</div><canvas id="ch-mod" height="160"></canvas></div>
+    <div class="stitle" style="margin-top:2px">Tabla de premios oficial</div>
+    <table class="ptable">
+      <tr><th>Modalidad</th><th>Costo</th><th>Premio</th><th>Prob.</th></tr>
+      <tr><td>Directa 5</td><td>$1-$100</td><td>$50,000</td><td>1/100,000</td></tr>
+      <tr><td>Directa 4</td><td>$1-$100</td><td>$5,000</td><td>1/10,000</td></tr>
+      <tr><td>Directa 3</td><td>$1-$100</td><td>$500</td><td>1/1,000</td></tr>
+      <tr><td>Par Inicial</td><td>$1-$100</td><td>$50</td><td>1/100</td></tr>
+      <tr><td>Par Final</td><td>$1-$100</td><td>$50</td><td>1/100</td></tr>
+      <tr><td>Núm. Inicial</td><td>$1-$100</td><td>$5</td><td>1/10</td></tr>
+      <tr><td>Núm. Final</td><td>$1-$100</td><td>$5</td><td>1/10</td></tr>
+      <tr><td>Súper 24</td><td>$24</td><td>$5,000</td><td>1/417</td></tr>
+      <tr><td>Súper 12</td><td>$12</td><td>$5,000</td><td>1/833</td></tr>
+      <tr><td>Súper 6</td><td>$6</td><td>$5,000</td><td>1/1,667</td></tr>
+      <tr><td>Súper 4</td><td>$4</td><td>$5,000</td><td>1/2,500</td></tr>
+      <tr><td>Súper Seis</td><td>$6</td><td>$500</td><td>1/167</td></tr>
+      <tr><td>Súper Tres</td><td>$3</td><td>$500</td><td>1/333</td></tr>
+    </table>
+  </div>
+
+  <!-- PERFIL -->
+  <div class="sec" id="sec-perfil">
+    <div class="stitle">Mi perfil</div>
+    <div class="devbadge" id="dev-badge">Device ID: —</div>
+    <div class="crow"><div><div class="cl">Nombre del jugador</div><div class="cs">Aparecerá en reportes globales</div></div></div>
+    <input type="text" class="cinp full" id="cfg-name" placeholder="Ej: Carlos / Jugador A" maxlength="30">
+    <div class="crow" style="margin-top:9px">
+      <div><div class="cl">Saldo inicial ficticio</div><div class="cs">Para reiniciar</div></div>
+      <input type="number" class="cinp" id="cfg-bal" value="1000">
+    </div>
+    <button class="btn btn-g" onclick="saveCfg()">💾 GUARDAR</button>
+    <button class="btn btn-c" onclick="navTo('oficial')" style="margin-top:7px">🌐 Resultado oficial</button>
+    <div class="card" style="margin-top:10px">
+      <div class="srow"><span class="sl">Device ID</span><span class="sv" style="font-size:10px;color:var(--p);font-family:var(--fh)" id="did">—</span></div>
+      <div class="srow"><span class="sl">Jugador</span><span class="sv" id="p-name">—</span></div>
+      <div class="srow"><span class="sl">Jugadas totales</span><span class="sv" id="p-total">0</span></div>
+      <div class="srow"><span class="sl">Neto total</span><span class="sv" id="p-net">$0</span></div>
+    </div>
+    <button class="btn btn-p" onclick="exportJSON()">📤 EXPORTAR DATOS JSON</button>
+    <button class="btn btn-r" onclick="resetAll()">🗑️ REINICIAR TODO</button>
+    <div class="disc">Cada dispositivo tiene su propio historial.<br>El Device ID te identifica en reportes de grupo.</div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav id="bnav">
+  <button class="nb active" id="nb-dash" onclick="navTo('dash')"><span class="ni">🏠</span>Inicio</button>
+  <button class="nb" id="nb-apuesta" onclick="goApuesta()"><span class="ni">🎯</span>Apostar</button>
+  <button class="nb" id="nb-carrito" onclick="navTo('carrito')"><span class="ni">🛒</span>Carrito</button>
+  <button class="nb" id="nb-hist" onclick="navTo('hist')"><span class="ni">📋</span>Historial</button>
+  <button class="nb" id="nb-stats" onclick="navTo('stats')"><span class="ni">📊</span>Stats</button>
+  <button class="nb" id="nb-perfil" onclick="navTo('perfil')"><span class="ni">👤</span>Perfil</button>
+</nav>
+
+<script>
+// ================================================================
+// TRIS SIMULADOR v3 — EDUCATIVO — DINERO FICTICIO
+// ================================================================
+const SORTEOS=[
+  {id:'MD',name:'Tris Medio Día',   time:'13:00',mins:780},
+  {id:'DT',name:'Tris De las Tres', time:'15:00',mins:900},
+  {id:'EX',name:'Tris Extra',       time:'17:00',mins:1020},
+  {id:'DS',name:'Tris De las Siete',time:'19:00',mins:1140},
+  {id:'CL',name:'Tris Clásico',     time:'21:00',mins:1260},
+];
+const MODS={
+  NI:{name:'Núm. Inicial', digits:1,cost:a=>a,  prize:a=>a*5,    check:(u,d)=>u[0]===d[0]},
+  NF:{name:'Núm. Final',   digits:1,cost:a=>a,  prize:a=>a*5,    check:(u,d)=>u[0]===d[4]},
+  PI:{name:'Par Inicial',  digits:2,cost:a=>a,  prize:a=>a*50,   check:(u,d)=>u[0]===d[0]&&u[1]===d[1]},
+  PF:{name:'Par Final',    digits:2,cost:a=>a,  prize:a=>a*50,   check:(u,d)=>u[0]===d[3]&&u[1]===d[4]},
+  D3:{name:'Directa 3',   digits:3,cost:a=>a,  prize:a=>a*500,  check:(u,d)=>u[0]===d[2]&&u[1]===d[3]&&u[2]===d[4]},
+  D4:{name:'Directa 4',   digits:4,cost:a=>a,  prize:a=>a*5000, check:(u,d)=>u[0]===d[1]&&u[1]===d[2]&&u[2]===d[3]&&u[3]===d[4]},
+  D5:{name:'Directa 5',   digits:5,cost:a=>a,  prize:a=>a*50000,check:(u,d)=>u.every((x,i)=>x===d[i])},
+  C7:{name:'Combo 7',     digits:5,cost:_=>7,  c7:true},
+  C10:{name:'Combo 10',   digits:5,cost:_=>10, c10:true},
+  CC:{name:'Tu propio Combo',digits:5,cost:a=>a,custom:true},
+  S24:{name:'Súper 24',   digits:4,cost:_=>24, prize:_=>5000,super4:true},
+  S12:{name:'Súper 12',   digits:4,cost:_=>12, prize:_=>5000,super4:true},
+  S6: {name:'Súper 6',    digits:4,cost:_=>6,  prize:_=>5000,super4:true},
+  S4: {name:'Súper 4',    digits:4,cost:_=>4,  prize:_=>5000,super4:true},
+  SS6:{name:'Súper Seis', digits:3,cost:_=>6,  prize:_=>500, super3:true},
+  SS3:{name:'Súper Tres', digits:3,cost:_=>3,  prize:_=>500, super3:true},
+};
+// Custom combo mods config
+const CC_MODS=[
+  {id:'NI',name:'Núm. Inicial', prize:'×5',  prob:'1/10'},
+  {id:'NF',name:'Núm. Final',   prize:'×5',  prob:'1/10'},
+  {id:'PI',name:'Par Inicial',  prize:'×50', prob:'1/100'},
+  {id:'PF',name:'Par Final',    prize:'×50', prob:'1/100'},
+  {id:'D3',name:'Directa 3',   prize:'×500', prob:'1/1K'},
+  {id:'D4',name:'Directa 4',   prize:'×5K',  prob:'1/10K'},
+  {id:'D5',name:'Directa 5',   prize:'×50K', prob:'1/100K'},
+];
+let CC_SEL={NI:false,NF:false,PI:false,PF:false,D3:false,D4:false,D5:false};
+let CC_AMT={NI:1,NF:1,PI:1,PF:1,D3:1,D4:1,D5:1};
+
+function smatch(a,b){if(a.length!==b.length)return false;const sa=[...a].sort((x,y)=>x-y),sb=[...b].sort((x,y)=>x-y);return sa.every((v,i)=>v===sb[i]);}
+function c7calc(u,d,m){let p=0;if(u.every((x,i)=>x===d[i]))p+=50000*m;if(u.slice(1).every((x,i)=>x===d[i+1]))p+=5000;if(u.slice(2).every((x,i)=>x===d[i+2]))p+=500;if(u[3]===d[3]&&u[4]===d[4])p+=50;if(u[0]===d[0]&&u[1]===d[1])p+=50;if(u[4]===d[4])p+=5*m;if(u[0]===d[0])p+=5*m;return p;}
+function c7bd(u,d,c10){const m=c10?2:1,it=[];if(u.every((x,i)=>x===d[i]))it.push({n:'Directa 5',p:50000*m});if(u.slice(1).every((x,i)=>x===d[i+1]))it.push({n:'Directa 4',p:5000});if(u.slice(2).every((x,i)=>x===d[i+2]))it.push({n:'Directa 3',p:500});if(u[3]===d[3]&&u[4]===d[4])it.push({n:'Par Final',p:50});if(u[0]===d[0]&&u[1]===d[1])it.push({n:'Par Inicial',p:50});if(u[4]===d[4])it.push({n:'Núm. Final',p:5*m});if(u[0]===d[0])it.push({n:'Núm. Inicial',p:5*m});return it;}
+function calcCustom(u,d,sel,amts){let p=0;if(sel.NI&&MODS.NI.check(u,d))p+=amts.NI*5;if(sel.NF&&MODS.NF.check(u.slice(4),d))p+=amts.NF*5;if(sel.PI&&MODS.PI.check(u,d))p+=amts.PI*50;if(sel.PF&&MODS.PF.check(u.slice(3),d))p+=amts.PF*50;if(sel.D3&&MODS.D3.check(u.slice(2),d))p+=amts.D3*500;if(sel.D4&&MODS.D4.check(u.slice(1),d))p+=amts.D4*5000;if(sel.D5&&MODS.D5.check(u,d))p+=amts.D5*50000;return p;}
+function customCost(sel,amts){return CC_MODS.filter(m=>sel[m.id]).reduce((s,m)=>s+amts[m.id],0);}
+function checkBet(u,d,mod,amt,meta){
+  const m=MODS[mod];if(!m)return 0;
+  if(m.c7)return c7calc(u,d,1);if(m.c10)return c7calc(u,d,2);
+  if(m.custom&&meta)return calcCustom(u,d,meta.sel,meta.amts);
+  if(m.super4)return smatch(u,d.slice(1))?m.prize(amt):0;
+  if(m.super3)return smatch(u,d.slice(2))?m.prize(amt):0;
+  if(m.check)return m.check(u,d)?m.prize(amt):0;
+  return 0;
+}
+// UUID
+function uuid(){return'xxxx-xxxx'.replace(/x/g,()=>Math.floor(Math.random()*16).toString(16));}
+// STATE
+function defSt(){const id=localStorage.getItem('tris_did')||uuid();localStorage.setItem('tris_did',id);
+  return{deviceId:id,playerName:'Jugador',balance:1000,initialBalance:1000,history:[],
+    stats:{played:0,won:0,invested:0,gained:0},balanceLog:[1000],cart:[]};}
+function loadSt(){try{const s=JSON.parse(localStorage.getItem('tris_v3')||'null');if(s){s.cart=s.cart||[];return s;}}catch(e){}return defSt();}
+function saveSt(){localStorage.setItem('tris_v3',JSON.stringify(ST));}
+let ST=loadSt();
+
+// BET STATE
+let BT={sorteoId:'CL',mod:null,digits:[],amount:1,plays:1};
+let TM={mod:'C7',cnt:1};
+let OFICIAL=null;
+
+// AUDIO
+function coin(){try{const c=new(window.AudioContext||window.webkitAudioContext)();[0,.08,.16].forEach((t,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=700+i*200;g.gain.setValueAtTime(.15,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+.2);o.start(c.currentTime+t);o.stop(c.currentTime+t+.25);});}catch(e){}}
+function winSnd(){try{const c=new(window.AudioContext||window.webkitAudioContext)();[523,659,784,1047].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;const t=i*.1;g.gain.setValueAtTime(.2,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+.3);o.start(c.currentTime+t);o.stop(c.currentTime+t+.35);});}catch(e){}}
+function loseSnd(){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.setValueAtTime(280,c.currentTime);o.frequency.exponentialRampToValueAtTime(140,c.currentTime+.4);g.gain.setValueAtTime(.15,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.5);o.start();o.stop(c.currentTime+.5);}catch(e){}}
+function speak(t){try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-MX';u.rate=1;window.speechSynthesis.speak(u);}catch(e){}}
+function toast(msg,color='#00d4ff'){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2400);}
+
+// SORTEO DETECTION
+function detect(){const now=new Date(),m=now.getHours()*60+now.getMinutes();let cur=null,nxt=null;for(let i=SORTEOS.length-1;i>=0;i--){if(m>=SORTEOS[i].mins){cur=SORTEOS[i];break;}}if(!cur)cur={...SORTEOS[4]};for(let i=0;i<SORTEOS.length;i++){if(m<SORTEOS[i].mins){nxt=SORTEOS[i];break;}}return{cur,nxt};}
+function ttNext(nxt){if(!nxt)return null;const m=new Date().getHours()*60+new Date().getMinutes(),d=nxt.mins-m;if(d<=0)return null;const h=Math.floor(d/60),mm=d%60;return h>0?`${h}h ${mm}m`:`${mm}min`;}
+
+// HEADER UPDATE
+function updHdr(){document.getElementById('h-bal').textContent='$'+ST.balance.toLocaleString();document.getElementById('h-name').textContent=ST.playerName||'Jugador';document.getElementById('h-dev').textContent=ST.deviceId.slice(0,8);const n=ST.cart.length;document.getElementById('cbadge').textContent=n;document.getElementById('cbadge').classList.toggle('on',n>0);}
+
+// DASHBOARD
+function updDash(){const{cur,nxt}=detect();document.getElementById('d-sname').textContent=cur.name;document.getElementById('d-stime').textContent=cur.time||'';const nt=ttNext(nxt);if(nxt&&nt){document.getElementById('d-nl').textContent='Próximo: '+nxt.name.replace('Tris ','');document.getElementById('d-cd').textContent=nt;}else{document.getElementById('d-cd').textContent='—';}document.getElementById('s-j').textContent=ST.stats.played;document.getElementById('s-g').textContent=ST.stats.won;document.getElementById('s-i').textContent='$'+ST.stats.invested.toLocaleString();const net=ST.stats.gained-ST.stats.invested;const ne=document.getElementById('s-n');ne.textContent=(net>=0?'+':'')+'$'+Math.abs(net).toLocaleString();ne.className='sv '+(net>=0?'go':'r');}
+
+// NAVIGATION
+const SM={dash:'sec-dash',apuesta:'sec-sorteo',carrito:'sec-carrito',result:'sec-result',
+  oficial:'sec-oficial',trism:'sec-trism',hist:'sec-hist',stats:'sec-stats',perfil:'sec-perfil',
+  sorteo:'sec-sorteo',mod:'sec-mod',comb:'sec-comb',monto:'sec-monto',cc:'sec-cc'};
+const NBM={dash:'nb-dash',apuesta:'nb-apuesta',carrito:'nb-carrito',hist:'nb-hist',stats:'nb-stats',perfil:'nb-perfil'};
+function showSec(id){document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));const el=document.getElementById(id);if(el)el.classList.add('active');document.getElementById('main').scrollTop=0;}
+function navTo(key){
+  showSec(SM[key]||'sec-dash');
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  const nb=document.getElementById(NBM[key]||'nb-'+key);if(nb)nb.classList.add('active');
+  if(key==='dash')updDash();
+  if(key==='carrito')rendCart();
+  if(key==='hist')rendHist();
+  if(key==='stats')rendStats();
+  if(key==='perfil')rendPerfil();
+}
+
+// POST-CART OVERLAY
+function showPostCart(){
+  document.getElementById('pc-sub').textContent=`${MODS[BT.mod]?.name||BT.mod} — ${BT.digits.join('-')}`;
+  document.getElementById('pc-counter').textContent=ST.cart.length+' apuesta'+(ST.cart.length!==1?'s':'');
+  document.getElementById('post-cart').classList.add('show');
+}
+function hidePostCart(){document.getElementById('post-cart').classList.remove('show');}
+function continueWithSameMod(){hidePostCart();BT.digits=[];buildDRow();showSec('sec-comb');document.getElementById('btn-n3').disabled=true;}
+function continueNewMod(){hidePostCart();BT.mod=null;BT.digits=[];document.querySelectorAll('.mbtn').forEach(b=>b.classList.remove('sel'));showSec('sec-mod');}
+function goCart(){hidePostCart();navTo('carrito');}
+
+// APUESTA FLOW
+function goApuesta(){BT={sorteoId:detect().cur.id,mod:BT.mod||null,digits:[],amount:BT.amount||1,plays:BT.plays||1};buildSorteoList();showSec('sec-sorteo');document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));document.getElementById('nb-apuesta').classList.add('active');}
+function buildSorteoList(){const{cur}=detect();const list=document.getElementById('sort-list');list.innerHTML='';SORTEOS.forEach(s=>{const d=document.createElement('div');const isCur=s.id===cur.id;d.className='sopt'+(s.id===BT.sorteoId?' sel':'');d.innerHTML=`<span class="sn">${s.name}</span>${isCur?'<span class="bcurr">ACTUAL</span>':`<span class="st">${s.time}</span>`}`;d.onclick=()=>{document.querySelectorAll('.sopt').forEach(x=>x.classList.remove('sel'));d.classList.add('sel');BT.sorteoId=s.id;};list.appendChild(d);});}
+
+function step0(){showSec('sec-sorteo');}
+function step(n){
+  if(n===1&&!BT.sorteoId){toast('Elige un sorteo','#ff4757');return;}
+  if(n===2){if(!BT.mod){toast('Elige una modalidad','#ff4757');return;}if(BT.mod==='CC'){buildCC();showSec('sec-cc');return;}buildDRow();updModInfo();}
+  if(n===3){const need=MODS[BT.mod]?.digits||5;if(BT.digits.length<need||BT.digits.some(d=>d===null||d===undefined)){toast('Completa los dígitos','#ff4757');return;}updMontoCosts();}
+  const map={1:'sec-mod',2:'sec-comb',3:'sec-monto'};
+  showSec(map[n]);
+}
+function backFromComb(){BT.mod==='CC'?showSec('sec-cc'):step(1);}
+
+// MODALIDAD SELECT
+const HINT={NI:'Ingresa 1 dígito — el PRIMERO del sorteo',NF:'Ingresa 1 dígito — el ÚLTIMO del sorteo',PI:'Ingresa los PRIMEROS 2 dígitos exactos',PF:'Ingresa los ÚLTIMOS 2 dígitos exactos',D3:'Ingresa las ÚLTIMAS 3 cifras en orden exacto',D4:'Ingresa las ÚLTIMAS 4 cifras en orden exacto',D5:'Los 5 dígitos en ORDEN EXACTO',C7:'5 dígitos — juega 7 modalidades simultáneas',C10:'5 dígitos — Combo Premium con dobles en D5/NI/NF',CC:'5 dígitos — para tu combo personalizado',S24:'4 dígitos TODOS DIFERENTES — cualquier orden (últimas 4)',S12:'4 dígitos con 2 IGUALES — cualquier orden (últimas 4)',S6:'4 dígitos con 2 PARES — cualquier orden (últimas 4)',S4:'4 dígitos con 3 IGUALES — cualquier orden (últimas 4)',SS6:'3 dígitos TODOS DIFERENTES — cualquier orden (últimas 3)',SS3:'3 dígitos con 2 IGUALES — cualquier orden (últimas 3)'};
+const PLABEL={NI:'$1→$5',NF:'$1→$5',PI:'$1→$50',PF:'$1→$50',D3:'$1→$500',D4:'$1→$5,000',D5:'$1→$50,000',C7:'$7 fijo · 48 posibs',C10:'$10 fijo · 48 posibs',CC:'Personalizado',S24:'$24→$5,000',S12:'$12→$5,000',S6:'$6→$5,000',S4:'$4→$5,000',SS6:'$6→$500',SS3:'$3→$500'};
+function selMod(id){BT.mod=id;BT.digits=[];document.querySelectorAll('.mbtn').forEach(b=>b.classList.remove('sel'));document.getElementById('m-'+id)?.classList.add('sel');coin();}
+function updModInfo(){const m=MODS[BT.mod];if(!m)return;document.getElementById('mib').innerHTML=`<div><span class="mn">${m.name}</span><div class="mc2">${HINT[BT.mod]||''}</div></div><div class="mp">${PLABEL[BT.mod]||''}</div>`;document.getElementById('dhint').textContent=HINT[BT.mod]||'';}
+
+// DIGIT ROW
+function buildDRow(){const need=MODS[BT.mod]?.digits||5;BT.digits=new Array(need).fill(null);const row=document.getElementById('drow');row.innerHTML='';for(let i=0;i<need;i++){const inp=document.createElement('input');inp.type='text';inp.className='dinp';inp.maxLength=1;inp.readOnly=true;inp.placeholder='?';inp.dataset.idx=i;row.appendChild(inp);}document.getElementById('btn-n3').disabled=true;}
+function getCurIdx(){const ins=[...document.querySelectorAll('#drow .dinp')];for(let i=0;i<ins.length;i++){if(ins[i].value==='')return i;}return ins.length;}
+function npk(n){const idx=getCurIdx();const ins=[...document.querySelectorAll('#drow .dinp')];if(idx>=ins.length)return;ins[idx].value=n;ins[idx].classList.add('f');BT.digits[idx]=n;const done=BT.digits.every(d=>d!==null&&d!==undefined);document.getElementById('btn-n3').disabled=!done;coin();}
+function npDel(){const ins=[...document.querySelectorAll('#drow .dinp')];let idx=getCurIdx()-1;if(idx<0)idx=ins.length-1;if(idx>=0){ins[idx].value='';ins[idx].classList.remove('f');BT.digits[idx]=null;document.getElementById('btn-n3').disabled=true;}}
+function npClr(){[...document.querySelectorAll('#drow .dinp')].forEach(i=>{i.value='';i.classList.remove('f');});BT.digits=new Array(BT.digits.length).fill(null);document.getElementById('btn-n3').disabled=true;}
+function rndFill(){const ins=[...document.querySelectorAll('#drow .dinp')];ins.forEach((inp,i)=>{const v=Math.floor(Math.random()*10);inp.value=v;inp.classList.add('f');BT.digits[i]=v;});document.getElementById('btn-n3').disabled=false;coin();}
+
+// CUSTOM COMBO BUILDER
+function buildCC(){const c=document.getElementById('cc-rows');c.innerHTML='';CC_MODS.forEach(m=>{const div=document.createElement('div');div.className='cc-row'+(CC_SEL[m.id]?' sel':'');div.innerHTML=`<div class="cc-toggle ${CC_SEL[m.id]?'on':''}" id="ct-${m.id}" onclick="toggleCC('${m.id}')"></div><div class="cc-info"><div class="cc-name">${m.name}</div><div class="cc-desc">${HINT[m.id]||''}</div><div class="cc-prize">${m.prize} · Prob: ${m.prob}</div></div><div class="cc-amt"><span style="font-size:10px;color:var(--tx2)">$</span><input type="number" id="ca-${m.id}" value="${CC_AMT[m.id]}" min="1" max="100" oninput="updCC()" style="${CC_SEL[m.id]?'':'opacity:.3;pointer-events:none'}"></div>`;c.appendChild(div);});updCC();}
+function toggleCC(id){CC_SEL[id]=!CC_SEL[id];buildCC();}
+function updCC(){let total=0;CC_MODS.forEach(m=>{if(CC_SEL[m.id]){const v=parseInt(document.getElementById('ca-'+m.id)?.value)||1;CC_AMT[m.id]=Math.max(1,Math.min(100,v));total+=CC_AMT[m.id];}});document.getElementById('cc-tot').textContent='$'+total;}
+
+// AMOUNT
+function setAmt(v){BT.amount=v;document.getElementById('amt-d').textContent=v.toLocaleString();document.querySelectorAll('.apb').forEach(b=>b.classList.remove('act'));updMontoCosts();}
+function chgP(d){BT.plays=Math.max(1,Math.min(100,BT.plays+d));document.getElementById('pval').textContent=BT.plays;updMontoCosts();}
+function updMontoCosts(){const m=MODS[BT.mod];if(!m)return;let base;if(m.custom){base=customCost(CC_SEL,CC_AMT);}else{base=m.cost(BT.amount);}const total=base*BT.plays;document.getElementById('mc-lbl').textContent='$'+base.toLocaleString();document.getElementById('pl-lbl').textContent='×'+BT.plays;document.getElementById('tc-lbl').textContent='$'+total.toLocaleString();}
+
+// CART
+function getBetMeta(){if(BT.mod==='CC')return{sel:{...CC_SEL},amts:{...CC_AMT}};return null;}
+function getBetCost(){const m=MODS[BT.mod];if(!m)return 0;if(m.custom)return customCost(CC_SEL,CC_AMT)*BT.plays;return m.cost(BT.amount)*BT.plays;}
+function addCart(){const m=MODS[BT.mod];if(!m)return;const cost=getBetCost();const meta=getBetMeta();ST.cart.push({id:Date.now()+Math.random(),sorteoId:BT.sorteoId,mod:BT.mod,digits:[...BT.digits],amount:BT.amount,plays:BT.plays,cost,meta});saveSt();updHdr();coin();showPostCart();}
+function removeFromCart(i){ST.cart.splice(i,1);saveSt();updHdr();rendCart();}
+function clearCart(){if(confirm('¿Vaciar el carrito?')){ST.cart=[];saveSt();updHdr();rendCart();}}
+function rendCart(){const items=document.getElementById('cart-items');const empty=document.getElementById('cart-empty');const footer=document.getElementById('cart-footer');const lbl=document.getElementById('cart-cnt-lbl');lbl.textContent=ST.cart.length+' apuesta'+(ST.cart.length!==1?'s':'');if(ST.cart.length===0){empty.style.display='block';footer.style.display='none';items.innerHTML='';return;}empty.style.display='none';footer.style.display='block';items.innerHTML='';let total=0;ST.cart.forEach((c,i)=>{const d=document.createElement('div');d.className='ci';d.innerHTML=`<div class="ci-num">#${i+1}</div><div class="ci-body"><div class="ci-mod">${MODS[c.mod]?.name||c.mod} · ${SORTEOS.find(s=>s.id===c.sorteoId)?.name||c.sorteoId}</div><div class="ci-comb">${c.digits.join('-')}</div><div class="ci-cost">$${c.cost} · ${c.plays} jugada${c.plays>1?'s':''}</div></div><button class="ci-del" onclick="removeFromCart(${i})">✕</button>`;items.appendChild(d);total+=c.cost;});document.getElementById('cart-total').textContent='$'+total.toLocaleString();}
+
+// DRAW
+function drawN(){if(OFICIAL&&OFICIAL.length===5){const r=[...OFICIAL];OFICIAL=null;document.getElementById('used-banner').style.display='none';return r;}return Array.from({length:5},()=>Math.floor(Math.random()*10));}
+
+// APPLY RESULT
+function applyRes(results,drawn,isBatch=false){const tc=results.reduce((s,r)=>s+r.cost,0),tp=results.reduce((s,r)=>s+r.prize,0);ST.balance-=tc;ST.balance+=tp;ST.stats.played+=results.reduce((s,r)=>s+r.plays,0);ST.stats.invested+=tc;ST.stats.gained+=tp;if(tp>0)ST.stats.won++;ST.balanceLog.push(ST.balance);if(ST.balanceLog.length>100)ST.balanceLog=ST.balanceLog.slice(-100);results.forEach(r=>{ST.history.unshift({id:Date.now()+Math.random(),sorteoId:r.sorteoId,mod:r.mod,digits:r.digits,drawn:[...drawn],amount:r.amount,plays:r.plays,cost:r.cost,prize:r.prize,win:r.prize>0,ts:new Date().toLocaleString()});});if(ST.history.length>1000)ST.history=ST.history.slice(0,1000);saveSt();updHdr();saveToCloud(results.map(r=>({...r,drawn:[...drawn]})));showResult(results,drawn,tc,tp,isBatch);}
+
+// SHOW RESULT
+function showResult(results,drawn,invested,prize,isBatch){const net=prize-invested;const isWin=prize>0&&prize>=invested,isPar=prize>0&&prize<invested;const ballsDiv=document.getElementById('r-balls');ballsDiv.innerHTML='';drawn.forEach((d,i)=>{const b=document.createElement('div');b.className='ball bd roll';b.textContent=d;b.style.animationDelay=(i*.09)+'s';ballsDiv.appendChild(b);});document.getElementById('r-str').textContent=drawn.join(' — ');const v=document.getElementById('verdict');v.className='verdict '+(isWin?'win':isPar?'partial':'lose');document.getElementById('v-e').textContent=isWin?'🏆':isPar?'🎯':'😔';document.getElementById('v-m').textContent=isWin?'¡GANASTE!':isPar?'Premio Parcial':'Sin Premio';document.getElementById('v-m').style.color=isWin?'var(--g)':isPar?'var(--go)':'var(--r)';document.getElementById('v-d').textContent=`Número sorteado: ${drawn.join('')}`;document.getElementById('v-i').textContent='$'+invested.toLocaleString();document.getElementById('v-w').textContent='$'+prize.toLocaleString();const ne=document.getElementById('v-n');ne.textContent=(net>=0?'+':'')+'$'+Math.abs(net).toLocaleString();ne.style.color=net>0?'var(--g)':net<0?'var(--r)':'var(--go)';
+// breakdown single
+const bd=document.getElementById('breakdown');bd.innerHTML='';if(!isBatch&&results.length===1){const r=results[0];if(['C7','C10'].includes(r.mod)){const it=c7bd(r.digits,drawn,r.mod==='C10');if(it.length>0){const card=document.createElement('div');card.className='card';card.innerHTML='<div style="font-size:9px;color:var(--tx2);margin-bottom:7px;letter-spacing:1px">DESGLOSE COMBO</div>'+it.map(x=>`<div class="srow"><span class="sl">✅ ${x.n}</span><span class="sv" style="color:var(--g)">+$${x.p.toLocaleString()}</span></div>`).join('');bd.appendChild(card);}}}
+// batch
+const bl=document.getElementById('batch-list');bl.innerHTML='';if(isBatch&&results.length>0){const won=results.filter(r=>r.prize>0).length;const s=document.createElement('div');s.className='bsumm';s.innerHTML=`<div class="bsa"><div class="bsl">Apuestas</div><div class="bsv" style="color:var(--c)">${results.length}</div></div><div class="bsa"><div class="bsl">Ganadoras</div><div class="bsv" style="color:var(--g)">${won}</div></div><div class="bsa"><div class="bsl">Perdidas</div><div class="bsv" style="color:var(--r)">${results.length-won}</div></div><div class="bsa"><div class="bsl">Neto</div><div class="bsv" style="color:${net>=0?'var(--g)':'var(--r)'}">${net>=0?'+':''}$${Math.abs(net).toLocaleString()}</div></div>`;bl.appendChild(s);const title=document.createElement('div');title.className='stitle';title.textContent='Detalle por apuesta';bl.appendChild(title);results.forEach((r,i)=>{const d=document.createElement('div');d.className='bri '+(r.prize>0?'w':'l');d.innerHTML=`<div><div class="bri-l">#${i+1} ${MODS[r.mod]?.name||r.mod}</div><div class="bri-c">${r.digits.join('-')}</div></div><div class="bri-p" style="color:${r.prize>0?'var(--g)':'var(--r)'}">${r.prize>0?'+$'+r.prize.toLocaleString():'-$'+r.cost}</div>`;bl.appendChild(d);});}
+navTo('result');
+if(isWin){winSnd();speak('Felicidades ganaste '+prize.toLocaleString()+' pesos');}else if(isPar){coin();speak('Tuviste premio parcial');}else{loseSnd();speak('No hubo combinaciones ganadoras');}}
+
+// SIM NOW
+function simNow(){const m=MODS[BT.mod];if(!m)return;const cost=getBetCost();if(cost>ST.balance){toast('Saldo insuficiente','#ff4757');return;}const drawn=drawN();let prize=0;for(let p=0;p<BT.plays;p++)prize+=checkBet(BT.digits,drawn,BT.mod,BT.amount,getBetMeta());applyRes([{sorteoId:BT.sorteoId,mod:BT.mod,digits:[...BT.digits],amount:BT.amount,plays:BT.plays,cost,prize,meta:getBetMeta()}],drawn);}
+
+// SIM CART
+function simCart(){if(ST.cart.length===0){toast('El carrito está vacío','#ff4757');return;}const tc=ST.cart.reduce((s,c)=>s+c.cost,0);if(tc>ST.balance){toast('Saldo insuficiente. Necesitas $'+tc,'#ff4757');return;}const drawn=drawN();const results=ST.cart.map(c=>{let prize=0;for(let p=0;p<c.plays;p++)prize+=checkBet(c.digits,drawn,c.mod,c.amount,c.meta||null);return{...c,prize};});ST.cart=[];saveSt();updHdr();applyRes(results,drawn,true);}
+
+// QUICK BET
+function quickBet(mod){const m=MODS[mod];if(!m)return;const digits=Array.from({length:m.digits||5},()=>Math.floor(Math.random()*10));const cost=m.cost(1);if(cost>ST.balance){toast('Saldo insuficiente','#ff4757');return;}const drawn=drawN();const prize=checkBet(digits,drawn,mod,1,null);applyRes([{sorteoId:detect().cur.id,mod,digits,amount:1,plays:1,cost,prize}],drawn);}
+
+// BATCH CART
+function batchCart(mod,n){const m=MODS[mod];if(!m)return;const cost=m.cost(1);let added=0;for(let i=0;i<n;i++){const digits=Array.from({length:m.digits||5},()=>Math.floor(Math.random()*10));ST.cart.push({id:Date.now()+i+Math.random(),sorteoId:detect().cur.id,mod,digits,amount:1,plays:1,cost,meta:null});added++;}saveSt();updHdr();toast(`${added} apuestas agregadas al carrito`,'#00ff88');navTo('carrito');}
+
+// TRISMÁTICO
+function showTrism(){TM={mod:'C7',cnt:1};document.querySelectorAll('#tm-grid .mbtn').forEach(b=>b.classList.remove('sel'));document.getElementById('tm-C7')?.classList.add('sel');updTm();navTo('trism');}
+function selTm(id){TM.mod=id;document.querySelectorAll('#tm-grid .mbtn').forEach(b=>b.classList.remove('sel'));document.getElementById('tm-'+id)?.classList.add('sel');updTm();}
+function chgTc(d){TM.cnt=Math.max(1,Math.min(200,TM.cnt+d));document.getElementById('tc-val').textContent=TM.cnt;updTm();}
+function updTm(){const m=MODS[TM.mod];if(!m)return;document.getElementById('tm-mod-lbl').textContent=m.name;document.getElementById('tm-cnt-lbl').textContent=TM.cnt;document.getElementById('tm-tot').textContent='$'+(m.cost(1)*TM.cnt).toLocaleString();}
+function trismCart(){const m=MODS[TM.mod];if(!m)return;const cost=m.cost(1);for(let i=0;i<TM.cnt;i++){const digits=Array.from({length:m.digits||5},()=>Math.floor(Math.random()*10));ST.cart.push({id:Date.now()+i+Math.random(),sorteoId:detect().cur.id,mod:TM.mod,digits,amount:1,plays:1,cost,meta:null});}saveSt();updHdr();toast(`${TM.cnt} Trismáticos al carrito`,'#a855f7');navTo('carrito');}
+function trismSim(){const m=MODS[TM.mod];if(!m)return;const cost=m.cost(1)*TM.cnt;if(cost>ST.balance){toast('Saldo insuficiente','#ff4757');return;}const drawn=drawN();const results=Array.from({length:TM.cnt},(_,i)=>{const digits=Array.from({length:m.digits||5},()=>Math.floor(Math.random()*10));const prize=checkBet(digits,drawn,TM.mod,1,null);return{sorteoId:detect().cur.id,mod:TM.mod,digits,amount:1,plays:1,cost:m.cost(1),prize};});applyRes(results,drawn,TM.cnt>1);}
+
+// HISTORIAL
+function rendHist(){const list=document.getElementById('hist-list');if(ST.history.length===0){list.innerHTML='<div style="text-align:center;padding:25px;color:var(--tx2)"><div style="font-size:28px">📋</div><div style="margin-top:7px">Sin jugadas aún</div></div>';return;}list.innerHTML='';ST.history.forEach(h=>{const net=h.prize-h.cost;const d=document.createElement('div');d.className='hitem';d.innerHTML=`<div class="hdot ${h.win?'w':h.prize>0?'par':'l'}"></div><div class="hi"><div class="hm">${MODS[h.mod]?.name||h.mod} · ${SORTEOS.find(s=>s.id===h.sorteoId)?.name||h.sorteoId}</div><div class="hc">${h.digits.join('-')}</div><div class="hdr">Sorteado: ${h.drawn.join('-')} · ${h.ts}</div></div><div class="hmoney"><div class="hv ${h.prize>0||net>=0?'w':'l'}">${net>=0?'+':''}$${Math.abs(net).toLocaleString()}</div><div class="hi2">Inv:$${h.cost}</div></div>`;list.appendChild(d);});}
+
+// CHARTS
+let CH={};
+function rendStats(){['pie','bal','bar','mod'].forEach(k=>{if(CH[k]){CH[k].destroy();CH[k]=null;}});const gc='rgba(255,255,255,0.04)',tc='rgba(255,255,255,0.3)';const sc={x:{ticks:{color:tc,font:{size:8}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:8}},grid:{color:gc}}};
+// PIE
+const gained=ST.stats.gained,lost=Math.max(0,ST.stats.invested-ST.stats.gained);CH.pie=new Chart(document.getElementById('ch-pie'),{type:'doughnut',data:{labels:['Ganado','Perdido'],datasets:[{data:[gained,lost],backgroundColor:['rgba(0,255,136,.7)','rgba(255,71,87,.7)'],borderColor:['#00ff88','#ff4757'],borderWidth:2,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:true,cutout:'65%',plugins:{legend:{labels:{color:'rgba(255,255,255,.6)',font:{size:11},padding:14}},tooltip:{callbacks:{label:ctx=>`$${ctx.raw.toLocaleString()}` }}}}});
+// LINE balance
+const bl=ST.balanceLog||[ST.initialBalance];CH.bal=new Chart(document.getElementById('ch-bal'),{type:'line',data:{labels:bl.map((_,i)=>'#'+i),datasets:[{label:'Saldo',data:bl,borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.07)',fill:true,tension:.4,pointRadius:1.5,pointBackgroundColor:'#00d4ff'}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:sc}});
+// BAR last 20
+const l20=ST.history.slice(0,20).reverse();CH.bar=new Chart(document.getElementById('ch-bar'),{type:'bar',data:{labels:l20.map((_,i)=>'#'+(i+1)),datasets:[{label:'Invertido',data:l20.map(h=>h.cost),backgroundColor:'rgba(255,71,87,.55)',borderColor:'#ff4757',borderWidth:1},{label:'Ganado',data:l20.map(h=>h.prize),backgroundColor:'rgba(0,255,136,.55)',borderColor:'#00ff88',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tc,font:{size:9},padding:10}}},scales:sc}});
+// DOUGHNUT by mod
+const mc={};ST.history.forEach(h=>{mc[MODS[h.mod]?.name||h.mod]=(mc[MODS[h.mod]?.name||h.mod]||0)+1;});const ml=Object.keys(mc),mv=Object.values(mc);const cols=['#00d4ff','#00ff88','#ffd700','#ff4757','#a855f7','#fb923c','#34d399','#f472b6','#60a5fa','#e879f9','#4ade80','#facc15','#06b6d4','#8b5cf6','#f97316','#ec4899'];CH.mod=new Chart(document.getElementById('ch-mod'),{type:'doughnut',data:{labels:ml,datasets:[{data:mv,backgroundColor:cols.slice(0,ml.length),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tc,font:{size:9},padding:8}}}}});}
+
+// PERFIL
+function rendPerfil(){document.getElementById('cfg-name').value=ST.playerName||'';document.getElementById('cfg-bal').value=ST.initialBalance;document.getElementById('dev-badge').textContent='Device ID: '+ST.deviceId;document.getElementById('did').textContent=ST.deviceId;document.getElementById('p-name').textContent=ST.playerName||'—';document.getElementById('p-total').textContent=ST.stats.played;const net=ST.stats.gained-ST.stats.invested;document.getElementById('p-net').textContent=(net>=0?'+':'')+'$'+Math.abs(net).toLocaleString();}
+function saveCfg(){const n=(document.getElementById('cfg-name').value||'').trim()||'Jugador';const b=parseInt(document.getElementById('cfg-bal').value)||1000;ST.playerName=n;ST.initialBalance=b;saveSt();updHdr();rendPerfil();toast('Configuración guardada','#00ff88');
+  if(FB_ONLINE){ db.collection('players').doc(ST.deviceId).set({deviceId:ST.deviceId,playerName:ST.playerName,balance:ST.balance,initialBalance:ST.initialBalance,stats:ST.stats,balanceLog:ST.balanceLog.slice(-50),lastUpdated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(e=>console.error(e)); }
+}
+function exportJSON(){const d={deviceId:ST.deviceId,playerName:ST.playerName,exportedAt:new Date().toISOString(),stats:ST.stats,balance:ST.balance,balanceLog:ST.balanceLog,history:ST.history.slice(0,200)};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`tris_${ST.playerName.replace(/\s/g,'_')}_${Date.now()}.json`;a.click();toast('Exportado!','#a855f7');}
+function resetAll(){if(confirm('¿Reiniciar todo? Se borrará el historial.')){const id=ST.deviceId,n=ST.playerName,b=ST.initialBalance;ST={deviceId:id,playerName:n,balance:b,initialBalance:b,history:[],stats:{played:0,won:0,invested:0,gained:0},balanceLog:[b],cart:[]};saveSt();updHdr();navTo('dash');toast('Todo reiniciado','#00d4ff');}}
+
+// OFICIAL RESULTS
+let OFICIAL_RES=null;
+async function fetchOres(){const btn=document.getElementById('btn-fetch');const loading=document.getElementById('o-loading');const list=document.getElementById('o-list');btn.disabled=true;btn.textContent='Consultando...';loading.style.display='block';list.innerHTML='';const url='https://www.loterianacional.gob.mx/Tris/Resultados';let results=null;for(const proxy of[`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,`https://corsproxy.io/?${encodeURIComponent(url)}`]){try{const r=await fetch(proxy,{signal:AbortSignal.timeout(9000)});if(!r.ok)continue;let html='';if(proxy.includes('allorigins')){const d=await r.json();html=d.contents;}else html=await r.text();results=parseOres(html);if(results&&results.length>0)break;}catch(e){continue;}}loading.style.display='none';btn.disabled=false;btn.textContent='🌐 Consultar loterianacional.gob.mx';if(!results||!results.length){list.innerHTML='<div style="text-align:center;padding:14px;color:var(--tx2);font-size:11px">No se pudo conectar.<br>Ingresa el número manualmente abajo.</div>';return;}list.innerHTML='<div class="stitle" style="margin-bottom:7px">Toca un resultado para usarlo</div>';results.forEach(r=>{const d=document.createElement('div');d.className='ores';d.innerHTML=`<div><div class="ot">${r.tipo||'—'} · Sorteo #${r.num||'?'}</div><div class="on">${r.combo.join(' ')}</div></div><div style="font-size:10px;color:var(--p)">${r.mult||''}</div>`;d.onclick=()=>{OFICIAL=r.combo;document.querySelectorAll('.ores').forEach(x=>x.classList.remove('used'));d.classList.add('used');document.getElementById('used-banner').style.display='block';document.getElementById('used-n').textContent=r.combo.join('');toast('Resultado cargado: '+r.combo.join(''),'#00ff88');};list.appendChild(d);});}
+function parseOres(html){try{const doc=new DOMParser().parseFromString(html,'text/html');const res=[];doc.querySelectorAll('table tr').forEach(row=>{const c=[...row.querySelectorAll('td')];if(c.length>=3){const combo=c[2]?.textContent?.trim();if(combo&&/^\d{5}$/.test(combo))res.push({num:c[0]?.textContent?.trim(),tipo:c[1]?.textContent?.trim(),combo:combo.split('').map(Number),mult:c[3]?.textContent?.trim()});}});return res;}catch(e){return null;}}
+function useManual(){const v=document.getElementById('m-res').value.trim().replace(/\s/g,'');if(v.length!==5||[...v].some(c=>isNaN(parseInt(c)))){toast('Ingresa exactamente 5 dígitos 0-9','#ff4757');return;}OFICIAL=[...v].map(Number);document.getElementById('used-banner').style.display='block';document.getElementById('used-n').textContent=v;toast('Resultado oficial cargado: '+v,'#00ff88');}
+
+
+// ================================================================
+// FIREBASE CONFIG
+// ================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAFEUWXmoEGYskjVEPgUa6kfvcZmcWTdbI",
+  authDomain: "tris-simulador.firebaseapp.com",
+  projectId: "tris-simulador",
+  storageBucket: "tris-simulador.firebasestorage.app",
+  messagingSenderId: "839389416510",
+  appId: "1:839389416510:web:f3feb2f9d29a32371f156f"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+let FB_ONLINE = false;
+
+// Test connection
+db.collection('_ping').doc('test').get()
+  .then(()=>{ FB_ONLINE=true; toast('☁️ Conectado a Firebase','#00ff88'); })
+  .catch(()=>{ FB_ONLINE=false; console.log('Firebase offline, usando localStorage'); });
+
+// Save player + plays to Firestore
+async function saveToCloud(results) {
+  if(!FB_ONLINE) return;
+  try {
+    // Update player profile
+    await db.collection('players').doc(ST.deviceId).set({
+      deviceId: ST.deviceId,
+      playerName: ST.playerName || 'Jugador',
+      balance: ST.balance,
+      initialBalance: ST.initialBalance,
+      stats: ST.stats,
+      balanceLog: ST.balanceLog.slice(-50),
+      lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge: true});
+    // Save each play
+    const batch = db.batch();
+    results.forEach(r => {
+      const ref = db.collection('plays').doc();
+      batch.set(ref, {
+        deviceId: ST.deviceId,
+        playerName: ST.playerName || 'Jugador',
+        sorteoId: r.sorteoId,
+        mod: r.mod,
+        digits: r.digits,
+        drawn: r.drawn || [],
+        amount: r.amount,
+        plays: r.plays,
+        cost: r.cost,
+        prize: r.prize,
+        win: r.prize > 0,
+        ts: new Date().toLocaleString(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    await batch.commit();
+  } catch(e) { console.error('Firestore error:', e); }
+}
+// INIT
+setInterval(()=>{updHdr();if(document.getElementById('sec-dash')?.classList.contains('active'))updDash();},30000);
+(function init(){if(!ST.deviceId){ST.deviceId=uuid();saveSt();}updHdr();updDash();BT.sorteoId=detect().cur.id;})();
+</script>
+</body>
+</html>
