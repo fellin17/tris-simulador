@@ -4,7 +4,82 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>TRIS Simulador — Versión Accesible</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+// ---- RESULTADO MANUAL EN CARRITO ----
+let RES_DIGITS = [null, null, null, null, null];
+
+function getRCurIdx() {
+  for(let i = 0; i < 5; i++) {
+    if(document.getElementById('rd'+i).value === '') return i;
+  }
+  return 5;
+}
+
+function rnpk(n) {
+  const idx = getRCurIdx();
+  if(idx >= 5) return;
+  const inp = document.getElementById('rd'+idx);
+  inp.value = n;
+  inp.classList.add('filled');
+  RES_DIGITS[idx] = n;
+  const done = RES_DIGITS.every(d => d !== null);
+  document.getElementById('btn-jugar').disabled = !done;
+  coin();
+}
+
+function rnpDel() {
+  let idx = getRCurIdx() - 1;
+  if(idx < 0) idx = 4;
+  const inp = document.getElementById('rd'+idx);
+  if(inp && inp.value !== '') {
+    inp.value = '';
+    inp.classList.remove('filled');
+    RES_DIGITS[idx] = null;
+    document.getElementById('btn-jugar').disabled = true;
+  }
+}
+
+function rnpClr() {
+  for(let i = 0; i < 5; i++) {
+    const inp = document.getElementById('rd'+i);
+    if(inp) { inp.value = ''; inp.classList.remove('filled'); }
+  }
+  RES_DIGITS = [null, null, null, null, null];
+  document.getElementById('btn-jugar').disabled = true;
+}
+
+function rnpRnd() {
+  for(let i = 0; i < 5; i++) {
+    const v = Math.floor(Math.random() * 10);
+    const inp = document.getElementById('rd'+i);
+    if(inp) { inp.value = v; inp.classList.add('filled'); }
+    RES_DIGITS[i] = v;
+  }
+  document.getElementById('btn-jugar').disabled = false;
+  coin();
+}
+
+function jugarConResultado() {
+  if(ST.cart.length === 0) { toast('El carrito está vacío', '#ff4757'); return; }
+  if(RES_DIGITS.some(d => d === null)) { toast('Ingresa los 5 dígitos', '#ff4757'); return; }
+  const tc = ST.cart.reduce((s, c) => s + c.cost, 0);
+  if(tc > ST.balance) { toast('Saldo insuficiente', '#ff4757'); return; }
+  // Use the manually entered result
+  OFICIAL = [...RES_DIGITS];
+  const drawn = drawN(); // will use OFICIAL
+  const results = ST.cart.map(c => {
+    let prize = 0;
+    for(let p = 0; p < c.plays; p++) prize += checkBet(c.digits, drawn, c.mod, c.amount, c.meta || null);
+    return { ...c, prize };
+  });
+  ST.cart = [];
+  saveSt();
+  updHdr();
+  rnpClr(); // reset the input
+  applyRes(results, drawn, true);
+}
+
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
 :root{
@@ -409,9 +484,253 @@ html, body { overflow-x: hidden !important; }
 .bsumm { grid-template-columns: repeat(2, 1fr) !important; }
 .bsumm .bsv { font-size: 22px !important; }
 
+
+/* RESULTADO MANUAL EN CARRITO */
+.result-input-box {
+  background: linear-gradient(135deg, rgba(0,212,255,.08), rgba(0,255,136,.05));
+  border: 2px solid rgba(0,212,255,.3);
+  border-radius: 18px;
+  padding: 18px 14px;
+  margin-bottom: 14px;
+}
+.result-input-box .rib-title {
+  font-family: var(--fh);
+  font-size: 13px;
+  color: var(--c);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.result-input-box .rib-sub {
+  font-size: 14px;
+  color: var(--tx2);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+.result-digits {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.rdig {
+  width: 56px;
+  height: 70px;
+  background: rgba(0,212,255,.06);
+  border: 2.5px solid rgba(0,212,255,.25);
+  border-radius: 12px;
+  color: var(--go);
+  font-family: var(--fh);
+  font-size: 36px;
+  font-weight: 900;
+  text-align: center;
+  outline: none;
+  caret-color: var(--go);
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+.rdig::-webkit-outer-spin-button,
+.rdig::-webkit-inner-spin-button { -webkit-appearance: none; }
+.rdig:focus {
+  border-color: var(--go);
+  background: rgba(255,215,0,.08);
+  box-shadow: 0 0 16px rgba(255,215,0,.2);
+}
+.rdig.filled { border-color: rgba(255,215,0,.5); }
+.btn-jugar {
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255,215,0,.2), rgba(255,215,0,.1));
+  border: 2px solid var(--go);
+  border-radius: 16px;
+  color: var(--go);
+  font-family: var(--fh);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all .2s;
+  text-transform: uppercase;
+  box-shadow: 0 0 20px rgba(255,215,0,.15);
+}
+.btn-jugar:active { transform: scale(.97); box-shadow: 0 0 30px rgba(255,215,0,.3); }
+.btn-jugar:disabled { opacity: .35; cursor: not-allowed; }
+.result-numpad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+.rnpk {
+  background: rgba(255,215,0,.07);
+  border: 1px solid rgba(255,215,0,.2);
+  border-radius: 10px;
+  padding: 14px 6px;
+  color: var(--tx);
+  font-family: var(--fh);
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all .12s;
+}
+.rnpk:active { background: rgba(255,215,0,.25); transform: scale(.94); }
+.rnpk.rdel { color: var(--r); font-size: 16px; font-family: var(--fb); }
+.rnpk.rclr { color: var(--tx2); font-size: 13px; font-family: var(--fb); }
+
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js">
+// ---- RESULTADO MANUAL EN CARRITO ----
+let RES_DIGITS = [null, null, null, null, null];
+
+function getRCurIdx() {
+  for(let i = 0; i < 5; i++) {
+    if(document.getElementById('rd'+i).value === '') return i;
+  }
+  return 5;
+}
+
+function rnpk(n) {
+  const idx = getRCurIdx();
+  if(idx >= 5) return;
+  const inp = document.getElementById('rd'+idx);
+  inp.value = n;
+  inp.classList.add('filled');
+  RES_DIGITS[idx] = n;
+  const done = RES_DIGITS.every(d => d !== null);
+  document.getElementById('btn-jugar').disabled = !done;
+  coin();
+}
+
+function rnpDel() {
+  let idx = getRCurIdx() - 1;
+  if(idx < 0) idx = 4;
+  const inp = document.getElementById('rd'+idx);
+  if(inp && inp.value !== '') {
+    inp.value = '';
+    inp.classList.remove('filled');
+    RES_DIGITS[idx] = null;
+    document.getElementById('btn-jugar').disabled = true;
+  }
+}
+
+function rnpClr() {
+  for(let i = 0; i < 5; i++) {
+    const inp = document.getElementById('rd'+i);
+    if(inp) { inp.value = ''; inp.classList.remove('filled'); }
+  }
+  RES_DIGITS = [null, null, null, null, null];
+  document.getElementById('btn-jugar').disabled = true;
+}
+
+function rnpRnd() {
+  for(let i = 0; i < 5; i++) {
+    const v = Math.floor(Math.random() * 10);
+    const inp = document.getElementById('rd'+i);
+    if(inp) { inp.value = v; inp.classList.add('filled'); }
+    RES_DIGITS[i] = v;
+  }
+  document.getElementById('btn-jugar').disabled = false;
+  coin();
+}
+
+function jugarConResultado() {
+  if(ST.cart.length === 0) { toast('El carrito está vacío', '#ff4757'); return; }
+  if(RES_DIGITS.some(d => d === null)) { toast('Ingresa los 5 dígitos', '#ff4757'); return; }
+  const tc = ST.cart.reduce((s, c) => s + c.cost, 0);
+  if(tc > ST.balance) { toast('Saldo insuficiente', '#ff4757'); return; }
+  // Use the manually entered result
+  OFICIAL = [...RES_DIGITS];
+  const drawn = drawN(); // will use OFICIAL
+  const results = ST.cart.map(c => {
+    let prize = 0;
+    for(let p = 0; p < c.plays; p++) prize += checkBet(c.digits, drawn, c.mod, c.amount, c.meta || null);
+    return { ...c, prize };
+  });
+  ST.cart = [];
+  saveSt();
+  updHdr();
+  rnpClr(); // reset the input
+  applyRes(results, drawn, true);
+}
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js">
+// ---- RESULTADO MANUAL EN CARRITO ----
+let RES_DIGITS = [null, null, null, null, null];
+
+function getRCurIdx() {
+  for(let i = 0; i < 5; i++) {
+    if(document.getElementById('rd'+i).value === '') return i;
+  }
+  return 5;
+}
+
+function rnpk(n) {
+  const idx = getRCurIdx();
+  if(idx >= 5) return;
+  const inp = document.getElementById('rd'+idx);
+  inp.value = n;
+  inp.classList.add('filled');
+  RES_DIGITS[idx] = n;
+  const done = RES_DIGITS.every(d => d !== null);
+  document.getElementById('btn-jugar').disabled = !done;
+  coin();
+}
+
+function rnpDel() {
+  let idx = getRCurIdx() - 1;
+  if(idx < 0) idx = 4;
+  const inp = document.getElementById('rd'+idx);
+  if(inp && inp.value !== '') {
+    inp.value = '';
+    inp.classList.remove('filled');
+    RES_DIGITS[idx] = null;
+    document.getElementById('btn-jugar').disabled = true;
+  }
+}
+
+function rnpClr() {
+  for(let i = 0; i < 5; i++) {
+    const inp = document.getElementById('rd'+i);
+    if(inp) { inp.value = ''; inp.classList.remove('filled'); }
+  }
+  RES_DIGITS = [null, null, null, null, null];
+  document.getElementById('btn-jugar').disabled = true;
+}
+
+function rnpRnd() {
+  for(let i = 0; i < 5; i++) {
+    const v = Math.floor(Math.random() * 10);
+    const inp = document.getElementById('rd'+i);
+    if(inp) { inp.value = v; inp.classList.add('filled'); }
+    RES_DIGITS[i] = v;
+  }
+  document.getElementById('btn-jugar').disabled = false;
+  coin();
+}
+
+function jugarConResultado() {
+  if(ST.cart.length === 0) { toast('El carrito está vacío', '#ff4757'); return; }
+  if(RES_DIGITS.some(d => d === null)) { toast('Ingresa los 5 dígitos', '#ff4757'); return; }
+  const tc = ST.cart.reduce((s, c) => s + c.cost, 0);
+  if(tc > ST.balance) { toast('Saldo insuficiente', '#ff4757'); return; }
+  // Use the manually entered result
+  OFICIAL = [...RES_DIGITS];
+  const drawn = drawN(); // will use OFICIAL
+  const results = ST.cart.map(c => {
+    let prize = 0;
+    for(let p = 0; p < c.plays; p++) prize += checkBet(c.digits, drawn, c.mod, c.amount, c.meta || null);
+    return { ...c, prize };
+  });
+  ST.cart = [];
+  saveSt();
+  updHdr();
+  rnpClr(); // reset the input
+  applyRes(results, drawn, true);
+}
+
+</script>
 </head>
 <body>
 
@@ -577,6 +896,38 @@ html, body { overflow-x: hidden !important; }
       <button class="btn btn-go btn-sm" onclick="batchCart('C7',30)" style="width:100%">⚡ +30 Combo7</button>
       <button class="btn btn-go btn-sm" onclick="batchCart('C10',30)" style="width:100%">⚡ +30 Combo10</button>
     </div>
+    
+    <!-- RESULTADO OFICIAL MANUAL -->
+    <div class="result-input-box">
+      <div class="rib-title">📋 Resultado del sorteo</div>
+      <div class="rib-sub">Ingresa el número oficial del Tris y presiona JUGAR para comparar con tus apuestas</div>
+      <div class="result-digits">
+        <input type="text" class="rdig" id="rd0" maxlength="1" placeholder="?" readonly>
+        <input type="text" class="rdig" id="rd1" maxlength="1" placeholder="?" readonly>
+        <input type="text" class="rdig" id="rd2" maxlength="1" placeholder="?" readonly>
+        <input type="text" class="rdig" id="rd3" maxlength="1" placeholder="?" readonly>
+        <input type="text" class="rdig" id="rd4" maxlength="1" placeholder="?" readonly>
+      </div>
+      <div class="result-numpad">
+        <button class="rnpk" onclick="rnpk(7)">7</button>
+        <button class="rnpk" onclick="rnpk(8)">8</button>
+        <button class="rnpk" onclick="rnpk(9)">9</button>
+        <button class="rnpk rdel" onclick="rnpDel()">⌫ DEL</button>
+        <button class="rnpk rclr" onclick="rnpClr()">CLR</button>
+        <button class="rnpk" onclick="rnpk(4)">4</button>
+        <button class="rnpk" onclick="rnpk(5)">5</button>
+        <button class="rnpk" onclick="rnpk(6)">6</button>
+        <button class="rnpk" onclick="rnpk(1)">1</button>
+        <button class="rnpk" onclick="rnpk(2)">2</button>
+        <button class="rnpk" onclick="rnpk(3)">3</button>
+        <button class="rnpk" onclick="rnpk(0)" style="grid-column:span 2">0</button>
+        <button class="rnpk" style="background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.3);color:var(--p)" onclick="rnpRnd()">🎲</button>
+      </div>
+      <button class="btn-jugar" id="btn-jugar" onclick="jugarConResultado()" style="margin-top:14px" disabled>
+        🎯 JUGAR CON ESTE NÚMERO
+      </button>
+    </div>
+
     <div id="cart-empty" style="text-align:center;padding:25px;color:var(--tx2);display:none"><div style="font-size:28px">🛒</div><div style="margin-top:7px">El carrito está vacío</div></div>
     <div id="cart-items"></div>
     <div id="cart-footer" style="display:none">
@@ -1018,6 +1369,81 @@ async function saveToCloud(results) {
 // INIT
 setInterval(()=>{updHdr();if(document.getElementById('sec-dash')?.classList.contains('active'))updDash();},30000);
 (function init(){if(!ST.deviceId){ST.deviceId=uuid();saveSt();}updHdr();updDash();BT.sorteoId=detect().cur.id;})();
+
+// ---- RESULTADO MANUAL EN CARRITO ----
+let RES_DIGITS = [null, null, null, null, null];
+
+function getRCurIdx() {
+  for(let i = 0; i < 5; i++) {
+    if(document.getElementById('rd'+i).value === '') return i;
+  }
+  return 5;
+}
+
+function rnpk(n) {
+  const idx = getRCurIdx();
+  if(idx >= 5) return;
+  const inp = document.getElementById('rd'+idx);
+  inp.value = n;
+  inp.classList.add('filled');
+  RES_DIGITS[idx] = n;
+  const done = RES_DIGITS.every(d => d !== null);
+  document.getElementById('btn-jugar').disabled = !done;
+  coin();
+}
+
+function rnpDel() {
+  let idx = getRCurIdx() - 1;
+  if(idx < 0) idx = 4;
+  const inp = document.getElementById('rd'+idx);
+  if(inp && inp.value !== '') {
+    inp.value = '';
+    inp.classList.remove('filled');
+    RES_DIGITS[idx] = null;
+    document.getElementById('btn-jugar').disabled = true;
+  }
+}
+
+function rnpClr() {
+  for(let i = 0; i < 5; i++) {
+    const inp = document.getElementById('rd'+i);
+    if(inp) { inp.value = ''; inp.classList.remove('filled'); }
+  }
+  RES_DIGITS = [null, null, null, null, null];
+  document.getElementById('btn-jugar').disabled = true;
+}
+
+function rnpRnd() {
+  for(let i = 0; i < 5; i++) {
+    const v = Math.floor(Math.random() * 10);
+    const inp = document.getElementById('rd'+i);
+    if(inp) { inp.value = v; inp.classList.add('filled'); }
+    RES_DIGITS[i] = v;
+  }
+  document.getElementById('btn-jugar').disabled = false;
+  coin();
+}
+
+function jugarConResultado() {
+  if(ST.cart.length === 0) { toast('El carrito está vacío', '#ff4757'); return; }
+  if(RES_DIGITS.some(d => d === null)) { toast('Ingresa los 5 dígitos', '#ff4757'); return; }
+  const tc = ST.cart.reduce((s, c) => s + c.cost, 0);
+  if(tc > ST.balance) { toast('Saldo insuficiente', '#ff4757'); return; }
+  // Use the manually entered result
+  OFICIAL = [...RES_DIGITS];
+  const drawn = drawN(); // will use OFICIAL
+  const results = ST.cart.map(c => {
+    let prize = 0;
+    for(let p = 0; p < c.plays; p++) prize += checkBet(c.digits, drawn, c.mod, c.amount, c.meta || null);
+    return { ...c, prize };
+  });
+  ST.cart = [];
+  saveSt();
+  updHdr();
+  rnpClr(); // reset the input
+  applyRes(results, drawn, true);
+}
+
 </script>
 </body>
 </html>
